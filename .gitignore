@@ -1,0 +1,12 @@
+# Tu botonera y tus imágenes son tuyas: no se suben.
+deck.json
+icons/
+emoji-cache/
+
+# Se generan al instalar
+node_modules/
+mediakey
+emoji2png
+
+*.log
+.DS_Store

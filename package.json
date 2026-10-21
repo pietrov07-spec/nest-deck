@@ -1,0 +1,25 @@
+{
+  "name": "nest-deck-mac",
+  "version": "1.0.0",
+  "description": "Convierte tu Google Nest Hub en un Stream Deck para Mac",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "cast": "node cast.js",
+    "build": "./compilar.sh"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "castv2-client": "^1.2.0"
+  },
+  "private": true,
+  "keywords": [
+    "stream-deck",
+    "nest-hub",
+    "google-cast",
+    "macos",
+    "chromecast",
+    "dashcast",
+    "streamdeck"
+  ]
+}

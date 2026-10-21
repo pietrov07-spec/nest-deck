@@ -1,0 +1,1260 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Editor Nest Deck</title>
+<style>
+  :root {
+    --bg: #f4f4f6; --panel: #fff; --text: #1d1d1f; --muted: #6e6e73; --line: #d9d9de;
+    --accent: #0a66ff; --danger: #d70015; --hub: #111;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161617; --panel: #232325; --text: #f5f5f7; --muted: #a1a1a6; --line: #3a3a3c; --accent: #3b8bff; --danger: #ff453a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 -apple-system, BlinkMacSystemFont, sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 2; flex-wrap: wrap; }
+  header h1 { font-size: 17px; margin: 0 auto 0 0; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; padding: 20px; max-width: 1400px; margin: 0 auto; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+
+  .hub { background: #2a2a2c; border-radius: 22px; padding: 14px; }
+  .hub-screen { aspect-ratio: 1024 / 600; background: var(--hub); border-radius: 8px; display: grid; gap: 1.4%; padding: 1.8%; }
+  .hint { color: var(--muted); font-size: 13px; margin: 10px 4px 0; }
+
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .tab { border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 999px; padding: 6px 14px;
+    font: inherit; cursor: pointer; }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .tab.drag-over { outline: 2px dashed var(--accent); outline-offset: 2px; }
+  .tab.new { border-style: dashed; color: var(--muted); }
+  .page-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .page-bar input { width: 220px; }
+
+  .key { border: 0; border-radius: 12px; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; font: inherit; font-size: clamp(10px, 1.3vw, 16px); cursor: grab; box-shadow: inset 0 -3px 0 rgba(0,0,0,.25);
+    min-width: 0; overflow: hidden; padding: 4px; text-align: center; }
+  .key .icon { font-size: clamp(20px, 3.4vw, 44px); line-height: 1; }
+  .key .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .key.sel { outline: 3px solid var(--accent); outline-offset: 3px; }
+  .key.drag-over { outline: 3px dashed #fff; }
+  .key.add { background: transparent; border: 2px dashed #555; color: #888; box-shadow: none; cursor: pointer; }
+  .key img.icon { width: clamp(24px, 4vw, 52px); height: clamp(24px, 4vw, 52px); object-fit: contain; pointer-events: none; }
+  .key.full { padding: 0; }
+  .key.full img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+
+  .imgrow { display: flex; gap: 10px; align-items: center; }
+  .thumb { width: 64px; height: 64px; border-radius: 10px; border: 1px solid var(--line); flex: none; display: flex;
+    align-items: center; justify-content: center; color: var(--muted); font-size: 11px; text-align: center; overflow: hidden;
+    background: repeating-conic-gradient(#8882 0 25%, transparent 0 50%) 0 0 / 12px 12px; }
+  .thumb img { width: 100%; height: 100%; object-fit: contain; }
+  .imgrow .btns { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 10; padding: 16px; }
+  .modal[hidden] { display: none; }
+  .modal-box { background: var(--panel); border-radius: 16px; padding: 18px; width: 100%; max-width: 360px; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+  .modal-box h2 { font-size: 16px; margin: 0 0 12px; }
+  #cropCanvas { width: 100%; aspect-ratio: 1; border-radius: 14px; cursor: grab; touch-action: none; display: block; }
+  #cropCanvas:active { cursor: grabbing; }
+  input[type=range] { width: 100%; }
+
+  .modal-box.wide { max-width: 780px; max-height: calc(100vh - 32px); overflow: auto; }
+  .creator { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 20px; }
+  @media (max-width: 640px) { .creator { grid-template-columns: 1fr; } }
+  .creator-preview { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .key-frame { background: #111; border-radius: 14px; padding: 14px; width: 100%; display: flex; justify-content: center; }
+  #kcCanvas { width: 100%; max-width: 180px; border-radius: 14px; display: block;
+    background: repeating-conic-gradient(#8884 0 25%, transparent 0 50%) 0 0 / 14px 14px; }
+  .presets { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; }
+  .presets .btn { padding: 6px 8px; font-size: 13px; }
+  .creator-controls h3 { font-size: 13px; margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--line); }
+  .creator-controls h3:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+  .creator-controls .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+  .check { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; text-transform: none; font-weight: 400; color: var(--text); font-size: 14px; letter-spacing: 0; }
+  .emojis.small button { width: 30px; height: 30px; font-size: 17px; }
+
+  /* Selector de color */
+  .color-field { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--bg);
+    color: var(--text); border-radius: 8px; padding: 4px 10px 4px 4px; font: inherit; font-size: 13px; cursor: pointer;
+    font-family: ui-monospace, Menlo, monospace; }
+  .color-field i { width: 26px; height: 26px; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); display: block; }
+  .picker { position: fixed; z-index: 30; width: 296px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 12px; box-shadow: 0 16px 48px rgba(0,0,0,.35); }
+  .picker[hidden] { display: none; }
+  .picker canvas.sv { width: 100%; height: 150px; border-radius: 8px; display: block; cursor: crosshair; touch-action: none; }
+  .picker .hue { -webkit-appearance: none; appearance: none; height: 14px; border-radius: 7px; margin: 10px 0 8px;
+    background: linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+  .picker .hue::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff;
+    border: 2px solid #333; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+  .picker .hexrow { display: flex; gap: 6px; align-items: center; }
+  .picker .hexrow i { width: 34px; height: 34px; border-radius: 8px; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+  .picker .hexrow input { font-family: ui-monospace, Menlo, monospace; }
+  .picker h4 { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin: 10px 0 4px; }
+  .palette { display: grid; grid-template-columns: repeat(16, 1fr); gap: 2px; }
+  .palette button { aspect-ratio: 1; border: 0; border-radius: 3px; padding: 0; cursor: pointer; }
+  .palette button:hover { outline: 2px solid var(--text); outline-offset: 1px; z-index: 1; }
+
+  /* Editor de degradados */
+  .gedit { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-top: 6px; }
+  .gbar { position: relative; height: 30px; border-radius: 8px; margin: 6px 9px 18px; cursor: copy;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+  .gstop { position: absolute; top: 22px; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; border: 3px solid #fff;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.35), 0 2px 4px rgba(0,0,0,.3); cursor: grab; touch-action: none; }
+  .gstop.sel { border-color: var(--accent); transform: scale(1.15); }
+  .gpresets { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-top: 8px; }
+  .gpresets button { height: 26px; border: 0; border-radius: 6px; cursor: pointer; padding: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+  .gpresets button:hover { outline: 2px solid var(--text); outline-offset: 1px; }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; align-self: start; position: sticky; top: 76px; }
+  .panel h2 { font-size: 15px; margin: 0 0 12px; }
+  label { display: block; font-weight: 600; font-size: 12px; color: var(--muted); margin: 12px 0 4px; text-transform: uppercase; letter-spacing: .03em; }
+  input[type=text], input[type=number], input[type=url], select, textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+  textarea { min-height: 70px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .emojis, .swatches { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .emojis button { font-size: 20px; width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); cursor: pointer; padding: 0; }
+  .swatches button { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--panel); outline: 1px solid var(--line); cursor: pointer; padding: 0; }
+  input[type=color] { width: 44px; height: 36px; border: 1px solid var(--line); border-radius: 8px; padding: 2px; background: var(--bg); }
+  .mods { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+  .mods label { display: flex; align-items: center; gap: 4px; margin: 0; text-transform: none; font-weight: 400; color: var(--text); font-size: 14px; letter-spacing: 0; }
+  .btn { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 8px; padding: 7px 12px; font: inherit; cursor: pointer; }
+  .btn:hover { filter: brightness(.97); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .btn.primary:disabled { opacity: .5; cursor: default; }
+  .btn.danger { color: var(--danger); }
+  .btn.rec { color: var(--danger); border-color: var(--danger); }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .warn { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  #status { font-size: 13px; color: var(--muted); }
+  #status.err { color: var(--danger); }
+  .hub-state { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); white-space: nowrap; }
+  .hub-state::before { content: '●'; margin-right: 6px; color: var(--muted); }
+  .hub-state.deck::before { color: #30d158; }
+  .hub-state.other::before, .hub-state.idle::before { color: #ff9f0a; }
+  .hub-state.offline::before { color: var(--danger); }
+  .empty { color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Editor Nest Deck</h1>
+  <span id="status"></span>
+  <span class="hub-state" id="hubState" title="Qué está mostrando el Nest Hub">Hub: …</span>
+  <label class="check" style="margin:0"><input type="checkbox" id="autoReopen"> Reabrir sola</label>
+  <button class="btn" id="castNow">📺 Abrir en el Hub</button>
+  <div class="row">
+    <span style="color:var(--muted)">Columnas</span>
+    <select id="columns" style="width:auto"></select>
+  </div>
+  <button class="btn" id="add">＋ Añadir botón</button>
+  <button class="btn primary" id="save" disabled>Guardar</button>
+</header>
+
+<main>
+  <section>
+    <div class="tabs" id="tabs"></div>
+    <div class="page-bar" id="pageBar"></div>
+    <div class="hub"><div class="hub-screen" id="grid"></div></div>
+    <p class="hint">Toca un botón para editarlo. Arrástralo para cambiarlo de lugar, o suéltalo sobre una pestaña para moverlo a otra pantalla. Al guardar, el Nest Hub se actualiza solo en unos segundos.</p>
+  </section>
+
+  <aside class="panel" id="panel"><p class="empty">Selecciona un botón para editarlo.</p></aside>
+</main>
+
+<datalist id="apps"></datalist>
+<div class="picker" id="picker" hidden></div>
+
+<div class="modal" id="creator" hidden>
+  <div class="modal-box wide">
+    <h2>Diseñar ícono</h2>
+    <div class="creator">
+      <div class="creator-preview">
+        <div class="key-frame"><canvas id="kcCanvas"></canvas></div>
+        <div class="warn" style="text-align:center">Así se verá el botón en el Nest Hub.</div>
+        <div class="presets" id="kcPresets"></div>
+      </div>
+      <div class="creator-controls" id="kcControls"></div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="kcCancel">Cancelar</button>
+      <button class="btn primary" id="kcUse">Usar diseño</button>
+    </div>
+  </div>
+</div>
+<input type="file" id="fileInput" hidden accept="image/png,image/jpeg,image/gif,image/bmp,image/webp,image/svg+xml,.svg,.bmp,.webp">
+
+<div class="modal" id="cropper" hidden>
+  <div class="modal-box">
+    <h2>Ajustar imagen</h2>
+    <canvas id="cropCanvas" width="256" height="256"></canvas>
+    <label>Zoom</label>
+    <input type="range" id="cropZoom" min="0" max="1" step="0.001">
+    <div class="row">
+      <button class="btn" id="cropFit">Ajustar (ver toda)</button>
+      <button class="btn" id="cropFill">Rellenar cuadro</button>
+    </div>
+    <div class="warn" id="cropInfo"></div>
+    <div class="warn">Arrastra la imagen para moverla. Lo que se ve en el cuadro es lo que aparecerá en el botón.</div>
+    <div class="actions">
+      <button class="btn" id="cropCancel">Cancelar</button>
+      <button class="btn primary" id="cropUse">Usar imagen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const EMOJIS = ['🎧','🎵','⏯️','⏮️','⏭️','🔉','🔊','🔇','🎙️','📸','🪟','🔒','🔍','⌨️','🦁','🌐','🎮','✳️','💬',
+  '📁','📝','📅','📧','💻','🖥️','⚙️','🚀','⭐','🔥','💡','🎬','📺','🎨','🧠','☕','🏠','📞','💼','✅','❌'];
+const COLORS = ['#1db954','#2d6cdf','#0a84ff','#16a085','#8e44ad','#d35400','#f39c12','#c0392b','#fb542b','#d97757','#1b2838','#333333','#555555'];
+const MODS = [['command','⌘ Cmd'],['shift','⇧ Shift'],['option','⌥ Opción'],['control','⌃ Control']];
+const MOD_SYM = { command: '⌘', shift: '⇧', option: '⌥', control: '⌃' };
+const TYPES = {
+  app: 'Abrir app', url: 'Abrir página web', keystroke: 'Atajo de teclado', keycode: 'Tecla especial (código)',
+  media: 'Control de música', volume: 'Cambiar volumen', mute: 'Silenciar / activar sonido', shell: 'Comando de terminal',
+  page: 'Ir a otra pantalla'
+};
+const PAGE_TARGETS = [['home', '🏠 Pantalla principal'], ['next', '➡️ Siguiente pantalla'], ['prev', '⬅️ Pantalla anterior']];
+// Teclas que no son caracteres: se envían por código de tecla de macOS.
+const KEYCODES = { Enter: 36, Tab: 48, Space: 49, Backspace: 51, Escape: 53, Delete: 117, Home: 115, End: 119,
+  PageUp: 116, PageDown: 121, ArrowLeft: 123, ArrowRight: 124, ArrowDown: 125, ArrowUp: 126,
+  F1: 122, F2: 120, F3: 99, F4: 118, F5: 96, F6: 97, F7: 98, F8: 100, F9: 101, F10: 109, F11: 103, F12: 111 };
+
+let deck = null, saved = '', selected = -1, dragFrom = -1, pageIdx = 0;
+const page = () => deck.pages[pageIdx];
+// Igual que en el Hub: como mínimo las mismas filas que la principal, para que los botones midan igual.
+function gridRows() {
+  const p = page(), home = deck.pages[0];
+  return Math.max(1, Math.ceil(p.buttons.length / p.columns), Math.ceil(home.buttons.length / home.columns));
+}
+const $ = (id) => document.getElementById(id);
+const api = (url, opts = {}) => fetch(url, { ...opts, headers: { 'X-Nest-Deck': '1', 'Content-Type': 'application/json' } })
+  .then(async (r) => { const j = await r.json().catch(() => ({})); if (!r.ok || j.ok === false) throw new Error(j.error || r.statusText); return j; });
+
+function setStatus(text, err) { $('status').textContent = text; $('status').className = err ? 'err' : ''; }
+function dirty() {
+  const d = JSON.stringify(deck) !== saved;
+  $('save').disabled = !d;
+  if (d) setStatus('Cambios sin guardar');
+  return d;
+}
+
+function el(tag, props = {}, ...kids) {
+  const e = document.createElement(tag);
+  Object.assign(e, props);
+  kids.forEach((k) => e.append(k));
+  return e;
+}
+
+// --- Colores ---
+
+const HEX = /^#[0-9a-f]{6}$/i;
+const toHex = (r, g, b) => '#' + [r, g, b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
+const normHex = (c) => {
+  let h = String(c || '').trim().replace(/^#?/, '#').toLowerCase();
+  if (/^#[0-9a-f]{3}$/.test(h)) h = '#' + [...h.slice(1)].map((x) => x + x).join('');
+  return HEX.test(h) ? h : null;
+};
+
+function hsvToHex(h, s, v) {
+  const f = (n) => { const k = (n + h / 60) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); };
+  return toHex(f(5) * 255, f(3) * 255, f(1) * 255);
+}
+function hexToHsv(hex) {
+  const n = parseInt(normHex(hex).slice(1), 16);
+  const r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const max = Math.max(r, g, b), d = max - Math.min(r, g, b);
+  let h = 0;
+  if (d) h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return { h: (h * 60 + 360) % 360, s: max ? d / max : 0, v: max };
+}
+function hslToHex(h, s, l) {
+  const a = s * Math.min(l, 1 - l);
+  const f = (n) => { const k = (n + h / 30) % 12; return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+  return toHex(f(0) * 255, f(8) * 255, f(4) * 255);
+}
+
+// Paleta: los colores de siempre, 16 tonos × 5 luminosidades y una fila de grises.
+const PALETTE = (() => {
+  const hues = [0, 15, 30, 42, 55, 80, 120, 150, 172, 190, 205, 220, 245, 270, 295, 325];
+  const rows = [[0.85, 0.85], [0.8, 0.7], [0.75, 0.55], [0.7, 0.42], [0.65, 0.28]].map(([s, l]) => hues.map((h) => hslToHex(h, s, l)));
+  const grays = Array.from({ length: 16 }, (_, i) => hslToHex(0, 0, 1 - i / 15));
+  return [...rows, grays];
+})();
+
+const RECENTS_KEY = 'nestdeck-colores-recientes';
+function loadRecents() { try { return JSON.parse(localStorage.getItem(RECENTS_KEY)) || []; } catch { return []; } }
+function addRecent(c) {
+  const list = [c, ...loadRecents().filter((x) => x !== c)].slice(0, 16);
+  try { localStorage.setItem(RECENTS_KEY, JSON.stringify(list)); } catch {}
+}
+
+let pickerState = null;
+
+function openPicker(anchor, value, onChange) {
+  closePicker();
+  const start = normHex(value) || '#2d6cdf';
+  const hsv = hexToHsv(start);
+  const p = $('picker');
+  pickerState = { anchor, start, current: start, onChange };
+
+  const sv = el('canvas', { className: 'sv', width: 272, height: 150 });
+  const hue = el('input', { type: 'range', className: 'hue', min: 0, max: 360, step: 1, value: Math.round(hsv.h) });
+  const swatch = el('i');
+  const hex = el('input', { type: 'text', maxLength: 7, value: start, spellcheck: false });
+  const row = el('div', { className: 'hexrow' }, swatch, hex);
+  if ('EyeDropper' in window) {
+    const drop = el('button', { className: 'btn', textContent: '💧', title: 'Cuentagotas: toma un color de cualquier parte de la pantalla' });
+    drop.onclick = async () => {
+      try { const r = await new EyeDropper().open(); set(r.sRGBHex, true); } catch {}
+    };
+    row.append(drop);
+  }
+
+  function drawSv() {
+    const ctx = sv.getContext('2d');
+    ctx.fillStyle = hsvToHex(hsv.h, 1, 1);
+    ctx.fillRect(0, 0, sv.width, sv.height);
+    const white = ctx.createLinearGradient(0, 0, sv.width, 0);
+    white.addColorStop(0, '#fff'); white.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = white; ctx.fillRect(0, 0, sv.width, sv.height);
+    const black = ctx.createLinearGradient(0, 0, 0, sv.height);
+    black.addColorStop(0, 'rgba(0,0,0,0)'); black.addColorStop(1, '#000');
+    ctx.fillStyle = black; ctx.fillRect(0, 0, sv.width, sv.height);
+    const x = hsv.s * sv.width, y = (1 - hsv.v) * sv.height;
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.stroke();
+  }
+  // fromOutside: el color llegó escrito, de la paleta o del cuentagotas, así que se recalculan los controles.
+  function set(c, fromOutside) {
+    const h = normHex(c);
+    if (!h) return;
+    if (fromOutside) { Object.assign(hsv, hexToHsv(h)); hue.value = Math.round(hsv.h); }
+    pickerState.current = h;
+    swatch.style.background = h;
+    if (document.activeElement !== hex) hex.value = h;
+    drawSv();
+    onChange(h);
+  }
+
+  let dragging = false;
+  const pick = (e) => {
+    const r = sv.getBoundingClientRect();
+    hsv.s = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+    hsv.v = Math.min(1, Math.max(0, 1 - (e.clientY - r.top) / r.height));
+    set(hsvToHex(hsv.h, hsv.s, hsv.v));
+  };
+  sv.onpointerdown = (e) => { dragging = true; sv.setPointerCapture(e.pointerId); pick(e); };
+  sv.onpointermove = (e) => { if (dragging) pick(e); };
+  sv.onpointerup = sv.onpointercancel = () => { dragging = false; };
+  hue.oninput = () => { hsv.h = Number(hue.value); set(hsvToHex(hsv.h, hsv.s, hsv.v)); };
+  hex.oninput = () => { if (normHex(hex.value)) set(hex.value, true); };
+  hex.onblur = () => { hex.value = pickerState ? pickerState.current : hex.value; };
+
+  const swatchGrid = (colors) => {
+    const g = el('div', { className: 'palette' });
+    colors.forEach((c) => { const x = el('button', { title: c }); x.style.background = c; x.onclick = () => set(c, true); g.append(x); });
+    return g;
+  };
+  const recents = loadRecents();
+  p.replaceChildren(sv, hue, row,
+    ...(recents.length ? [el('h4', { textContent: 'Recientes' }), swatchGrid(recents)] : []),
+    el('h4', { textContent: 'Favoritos' }), swatchGrid(COLORS),
+    el('h4', { textContent: 'Paleta' }), swatchGrid(PALETTE.flat()));
+  swatch.style.background = start;
+  drawSv();
+
+  p.hidden = false;
+  const r = anchor.getBoundingClientRect(), pr = p.getBoundingClientRect();
+  p.style.left = Math.max(8, Math.min(r.left, innerWidth - pr.width - 8)) + 'px';
+  p.style.top = (r.bottom + 6 + pr.height > innerHeight ? Math.max(8, r.top - pr.height - 6) : r.bottom + 6) + 'px';
+}
+
+function closePicker() {
+  if (!pickerState) return;
+  if (pickerState.current !== pickerState.start) addRecent(pickerState.current);
+  pickerState = null;
+  $('picker').hidden = true;
+}
+document.addEventListener('pointerdown', (e) => {
+  if (pickerState && !$('picker').contains(e.target) && !pickerState.anchor.contains(e.target)) closePicker();
+}, true);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && pickerState) { e.stopPropagation(); closePicker(); } }, true);
+
+// Botón que muestra un color y abre el selector. onChange se llama en vivo mientras se elige.
+function colorField(value, onChange) {
+  const sw = el('i');
+  const text = el('span');
+  const show = (c) => { sw.style.background = c; text.textContent = c; };
+  const b = el('button', { className: 'color-field', type: 'button' }, sw, text);
+  show(normHex(value) || '#444444');
+  b.onclick = () => (pickerState && pickerState.anchor === b ? closePicker()
+    : openPicker(b, text.textContent, (c) => { show(c); onChange(c); }));
+  return b;
+}
+
+// --- Degradados ---
+// { type: 'linear' | 'radial', angle: 0–360 (como en CSS: 0 = hacia arriba, 90 = hacia la derecha),
+//   stops: [{ pos: 0–100, color }] } con 2 a 5 colores.
+
+const GRADIENT_PRESETS = [
+  ['Atardecer', ['#ff5f6d', '#ffc371']], ['Océano', ['#2193b0', '#6dd5ed']], ['Uva', ['#7b2ff7', '#f107a3']],
+  ['Bosque', ['#134e5e', '#71b280']], ['Fuego', ['#f12711', '#f5af19']], ['Noche', ['#0f2027', '#203a43', '#2c5364']],
+  ['Menta', ['#00b09b', '#96c93d']], ['Durazno', ['#ffecd2', '#fcb69f']], ['Neón', ['#00f5a0', '#00d9f5']],
+  ['Berry', ['#8e2de2', '#4a00e0']], ['Arcoíris', ['#ff0080', '#ff8c00', '#40e0d0', '#7b2ff7']], ['Grafito', ['#434343', '#000000']],
+].map(([name, colors]) => [name, {
+  type: 'linear', angle: 135,
+  stops: colors.map((color, i) => ({ pos: Math.round((i / (colors.length - 1)) * 100), color })),
+}]);
+
+const sortedStops = (g) => g.stops.slice().sort((a, b) => a.pos - b.pos);
+function cssGradient(g, forceAngle) {
+  const s = sortedStops(g).map((x) => `${x.color} ${x.pos}%`).join(', ');
+  if (forceAngle === undefined && g.type === 'radial') return `radial-gradient(circle farthest-corner at center, ${s})`;
+  return `linear-gradient(${forceAngle ?? g.angle}deg, ${s})`;
+}
+function defaultGradient(color) {
+  const c = normHex(color) || '#2d6cdf';
+  return { type: 'linear', angle: 135, stops: [{ pos: 0, color: c }, { pos: 100, color: shade(c, -70) }] };
+}
+function randomGradient() {
+  const h = Math.random() * 360, spread = 40 + Math.random() * 120;
+  return { type: 'linear', angle: Math.round(Math.random() * 8) * 45,
+    stops: [{ pos: 0, color: hslToHex(h, 0.8, 0.55) }, { pos: 100, color: hslToHex((h + spread) % 360, 0.8, 0.45) }] };
+}
+
+// Editor de degradados. Cambia g en su lugar y llama a onChange() tras cada cambio.
+function gradientEditor(g, onChange) {
+  const box = el('div', { className: 'gedit' });
+  let sel = 0;
+
+  function build() {
+    sel = Math.min(sel, g.stops.length - 1);
+    const bar = el('div', { className: 'gbar', title: 'Haz clic en la barra para agregar un color' });
+    const handles = g.stops.map((s, i) => {
+      const h = el('div', { className: 'gstop' + (i === sel ? ' sel' : ''), title: 'Arrastra para mover; clic para elegirlo' });
+      h.onpointerdown = (e) => {
+        e.stopPropagation();
+        const changedSel = sel !== i;
+        sel = i;
+        handles.forEach((x, j) => x.classList.toggle('sel', j === i));
+        h.setPointerCapture(e.pointerId);
+        h.onpointermove = (ev) => {
+          const r = bar.getBoundingClientRect();
+          s.pos = Math.round(Math.min(100, Math.max(0, ((ev.clientX - r.left) / r.width) * 100)));
+          refresh(); onChange();
+        };
+        // Al soltar se reconstruye el editor para que el selector de color muestre el color elegido.
+        h.onpointerup = () => { h.onpointermove = null; if (changedSel) build(); };
+      };
+      bar.append(h);
+      return h;
+    });
+    function refresh() {
+      bar.style.background = cssGradient(g, 90);
+      g.stops.forEach((s, i) => { handles[i].style.left = s.pos + '%'; handles[i].style.background = s.color; });
+      posText.textContent = `Posición ${g.stops[sel].pos}%`;
+    }
+    bar.onpointerdown = (e) => {
+      if (g.stops.length >= 5) { setStatus('Máximo 5 colores por degradado', true); return; }
+      const r = bar.getBoundingClientRect();
+      const pos = Math.round(((e.clientX - r.left) / r.width) * 100);
+      const near = g.stops.reduce((a, b) => (Math.abs(b.pos - pos) < Math.abs(a.pos - pos) ? b : a));
+      g.stops.push({ pos, color: near.color });
+      sel = g.stops.length - 1;
+      build(); onChange();
+    };
+
+    const posText = el('span', { className: 'warn', style: 'margin:0' });
+    const stopColor = colorField(g.stops[sel].color, (c) => { g.stops[sel].color = c; refresh(); onChange(); });
+    const del = el('button', { className: 'btn danger', textContent: 'Quitar', title: 'Quitar este color' });
+    del.disabled = g.stops.length <= 2;
+    del.onclick = () => { g.stops.splice(sel, 1); build(); onChange(); };
+
+    const type = el('select');
+    [['linear', 'Lineal'], ['radial', 'Radial']].forEach(([v, t]) => type.append(el('option', { value: v, textContent: t })));
+    type.value = g.type;
+    type.onchange = () => { g.type = type.value; build(); onChange(); };
+    const angleText = el('span', { className: 'warn', style: 'margin:0;min-width:36px', textContent: g.angle + '°' });
+    const angle = el('input', { type: 'range', min: 0, max: 360, step: 5, value: g.angle });
+    angle.oninput = () => { g.angle = Number(angle.value); angleText.textContent = g.angle + '°'; refresh(); onChange(); };
+    const quick = el('div', { className: 'row', style: 'gap:4px' }, ...[[0, '↑'], [90, '→'], [135, '↘'], [180, '↓'], [45, '↗']].map(([a, t]) => {
+      const x = el('button', { className: 'btn', textContent: t, title: a + '°', style: 'padding:4px 8px' });
+      x.onclick = () => { g.angle = a; build(); onChange(); };
+      return x;
+    }));
+
+    const invert = el('button', { className: 'btn', textContent: '⇄ Invertir' });
+    invert.onclick = () => { g.stops.forEach((s) => { s.pos = 100 - s.pos; }); build(); onChange(); };
+    const random = el('button', { className: 'btn', textContent: '🎲 Aleatorio' });
+    random.onclick = () => { Object.assign(g, randomGradient()); sel = 0; build(); onChange(); };
+
+    const presets = el('div', { className: 'gpresets' }, ...GRADIENT_PRESETS.map(([name, preset]) => {
+      const x = el('button', { title: name });
+      x.style.background = cssGradient(preset, 90);
+      x.onclick = () => { Object.assign(g, structuredClone(preset), { type: g.type, angle: g.angle }); sel = 0; build(); onChange(); };
+      return x;
+    }));
+
+    box.replaceChildren(
+      bar,
+      el('div', { className: 'row', style: 'flex-wrap:wrap' }, stopColor, del, posText),
+      el('div', { className: 'row', style: 'margin-top:8px;flex-wrap:wrap' }, type,
+        ...(g.type === 'linear' ? [angle, angleText] : [])),
+      ...(g.type === 'linear' ? [el('div', { style: 'margin-top:6px' }, quick)] : []),
+      el('div', { className: 'row', style: 'margin-top:8px' }, invert, random),
+      el('label', { textContent: 'Degradados listos' }), presets
+    );
+    refresh();
+  }
+  build();
+  return box;
+}
+
+function renderGrid() {
+  const grid = $('grid');
+  grid.style.gridTemplateColumns = `repeat(${page().columns}, 1fr)`;
+  grid.style.gridTemplateRows = `repeat(${gridRows()}, 1fr)`;
+  grid.replaceChildren();
+  page().buttons.forEach((b, i) => {
+    const k = el('button', { className: 'key' + (i === selected ? ' sel' : ''), draggable: true, title: b.label });
+    if (b.image && b.style === 'full') {
+      k.classList.add('full');
+      k.append(el('img', { src: '/icons/' + b.image, alt: '', draggable: false }));
+    } else {
+      const icon = b.image
+        ? el('img', { className: 'icon', src: '/icons/' + b.image, alt: '', draggable: false })
+        : el('span', { className: 'icon', textContent: b.icon || '' });
+      k.append(icon, el('span', { className: 'lbl', textContent: b.label }));
+    }
+    k.style.background = b.gradient ? cssGradient(b.gradient) : (b.color || '#444');
+    k.onclick = () => select(i);
+    k.ondragstart = () => { dragFrom = i; };
+    k.ondragend = () => { dragFrom = -1; };
+    k.ondragover = (e) => { e.preventDefault(); k.classList.add('drag-over'); };
+    k.ondragleave = () => k.classList.remove('drag-over');
+    k.ondrop = (e) => {
+      e.preventDefault();
+      k.classList.remove('drag-over');
+      // Un archivo soltado sobre el botón se usa como su imagen; si no, es un cambio de lugar.
+      if (e.dataTransfer.files.length) { select(i); openCropper(e.dataTransfer.files[0], page().buttons[i]); }
+      else move(dragFrom, i);
+    };
+    grid.append(k);
+  });
+  dirty();
+}
+
+function move(from, to) {
+  if (from < 0 || to < 0 || from >= page().buttons.length || to >= page().buttons.length || from === to) return;
+  const [b] = page().buttons.splice(from, 1);
+  page().buttons.splice(to, 0, b);
+  select(to);
+}
+
+function field(labelText, input) { return [el('label', { textContent: labelText }), input]; }
+function bind(input, obj, key, transform = (v) => v) {
+  input.value = obj[key] ?? '';
+  input.oninput = () => { obj[key] = transform(input.value); renderGrid(); };
+  return input;
+}
+
+function shortcutText(a) {
+  const mods = (a.modifiers || []).map((m) => MOD_SYM[m]).join('');
+  if (a.type === 'keycode') {
+    const name = Object.keys(KEYCODES).find((k) => KEYCODES[k] === a.code);
+    return mods + (name || `código ${a.code}`);
+  }
+  return mods + (a.key === ' ' ? 'Espacio' : (a.key || '').toUpperCase());
+}
+
+function actionFields(b) {
+  const a = b.action;
+  const out = [];
+  if (a.type === 'app') {
+    out.push(...field('App', bind(el('input', { type: 'text', placeholder: 'Ej. Spotify' }), a, 'name')));
+    out[out.length - 1].setAttribute('list', 'apps');
+  } else if (a.type === 'url') {
+    out.push(...field('Dirección', bind(el('input', { type: 'url', placeholder: 'https://…' }), a, 'url')));
+  } else if (a.type === 'keystroke' || a.type === 'keycode') {
+    const show = el('input', { type: 'text', readOnly: true, value: shortcutText(a) });
+    const rec = el('button', { className: 'btn', textContent: 'Grabar atajo' });
+    rec.onclick = () => recordShortcut(b, rec);
+    out.push(el('label', { textContent: 'Atajo' }), el('div', { className: 'row' }, show, rec),
+      el('div', { className: 'warn', textContent: 'Pulsa “Grabar atajo” y luego la combinación. Algunos atajos del sistema (como ⌘⇧4) no se pueden simular.' }));
+    const mods = el('div', { className: 'mods' });
+    MODS.forEach(([m, text]) => {
+      const cb = el('input', { type: 'checkbox', checked: (a.modifiers || []).includes(m) });
+      cb.onchange = () => {
+        a.modifiers = MODS.map(([x]) => x).filter((x) => x === m ? cb.checked : (a.modifiers || []).includes(x));
+        renderPanel(); renderGrid();
+      };
+      mods.append(el('label', {}, cb, text));
+    });
+    out.push(mods);
+  } else if (a.type === 'media') {
+    const cmd = el('select');
+    [['playpause', 'Play / Pausa'], ['next', 'Siguiente'], ['previous', 'Anterior']].forEach(([v, t]) => cmd.append(el('option', { value: v, textContent: t })));
+    const app = el('select');
+    [['Spotify', 'Spotify'], ['Music', 'Apple Música'], ['', 'Tecla multimedia del sistema']].forEach(([v, t]) => app.append(el('option', { value: v, textContent: t })));
+    bind(cmd, a, 'command');
+    app.value = a.app || '';
+    app.onchange = () => { if (app.value) a.app = app.value; else delete a.app; renderGrid(); };
+    out.push(...field('Qué hace', cmd), ...field('En qué app', app));
+  } else if (a.type === 'volume') {
+    out.push(...field('Cambio de volumen (− baja, + sube)', bind(el('input', { type: 'number', step: 5, min: -100, max: 100 }), a, 'delta', Number)));
+  } else if (a.type === 'page') {
+    const to = el('select');
+    [...PAGE_TARGETS, ...deck.pages.map((p) => [p.id, '📄 ' + p.name])].forEach(([v, t]) => to.append(el('option', { value: v, textContent: t })));
+    bind(to, a, 'to');
+    out.push(...field('Destino', to),
+      el('div', { className: 'warn', textContent: 'El cambio de pantalla ocurre en el Nest Hub al instante. Con “Probar” cambias de pantalla aquí en el editor.' }));
+  } else if (a.type === 'shell') {
+    out.push(...field('Comando', bind(el('textarea', { placeholder: "say 'Hola'" }), a, 'command')),
+      el('div', { className: 'warn', textContent: 'Se ejecuta en tu Mac con tu usuario al tocar el botón. Usa solo comandos que entiendas.' }));
+  }
+  return out;
+}
+
+function recordShortcut(b, rec) {
+  rec.textContent = 'Pulsa el atajo…';
+  rec.classList.add('rec');
+  const onKey = (e) => {
+    if (['Meta', 'Shift', 'Alt', 'Control'].includes(e.key)) return;
+    e.preventDefault();
+    window.removeEventListener('keydown', onKey, true);
+    const modifiers = [e.metaKey && 'command', e.shiftKey && 'shift', e.altKey && 'option', e.ctrlKey && 'control'].filter(Boolean);
+    let key = null;
+    if (/^Key[A-Z]$/.test(e.code)) key = e.code.slice(3).toLowerCase();
+    else if (/^Digit\d$/.test(e.code)) key = e.code.slice(5);
+    else if (e.code === 'Space') key = ' ';
+    const special = e.code in KEYCODES ? e.code : (e.key in KEYCODES ? e.key : null);
+    if (key !== null) b.action = { type: 'keystroke', key, modifiers };
+    else if (special) b.action = { type: 'keycode', code: KEYCODES[special], modifiers };
+    else if (e.key.length === 1) b.action = { type: 'keystroke', key: e.key.toLowerCase(), modifiers };
+    renderPanel(); renderGrid();
+  };
+  window.addEventListener('keydown', onKey, true);
+}
+
+function renderPanel() {
+  const panel = $('panel');
+  const b = page().buttons[selected];
+  if (!b) { panel.replaceChildren(el('p', { className: 'empty', textContent: 'Selecciona un botón para editarlo.' })); return; }
+
+  const name = bind(el('input', { type: 'text', maxLength: 40 }), b, 'label');
+
+  const thumb = el('div', { className: 'thumb' });
+  if (b.image) thumb.append(el('img', { src: '/icons/' + b.image, alt: '' }));
+  else thumb.textContent = 'Sin imagen';
+  const upload = el('button', { className: 'btn', textContent: b.image ? 'Cambiar imagen…' : 'Subir imagen…' });
+  upload.onclick = () => {
+    $('fileInput').value = '';
+    $('fileInput').onchange = () => { if ($('fileInput').files[0]) openCropper($('fileInput').files[0], b); };
+    $('fileInput').click();
+  };
+  const design = el('button', { className: 'btn', textContent: b.design ? '🎨 Editar diseño…' : '🎨 Diseñar ícono…' });
+  design.onclick = () => openCreator(b);
+  const imageBtns = el('div', { className: 'btns' }, upload, design);
+  if (b.image) {
+    const remove = el('button', { className: 'btn danger', textContent: 'Quitar' });
+    remove.onclick = () => { delete b.image; delete b.style; delete b.design; renderPanel(); renderGrid(); };
+    imageBtns.append(remove);
+  }
+  const imageSection = [
+    el('label', { textContent: 'Imagen propia' }),
+    el('div', { className: 'imgrow' }, thumb, imageBtns),
+    el('div', { className: 'warn', textContent: 'PNG, JPG, SVG, GIF, BMP o WEBP. Ideal: cuadrada y de al menos 144 × 144 px. También puedes soltar un archivo sobre un botón de la vista previa.' }),
+  ];
+  if (b.image) {
+    const style = el('select');
+    [['icon', 'Ícono + nombre'], ['full', 'Imagen completa (sin texto)']].forEach(([v, t]) => style.append(el('option', { value: v, textContent: t })));
+    style.value = b.style || 'icon';
+    style.onchange = () => { b.style = style.value; renderGrid(); };
+    imageSection.push(...field('Estilo', style));
+  }
+
+  const icon = bind(el('input', { type: 'text', maxLength: 8, placeholder: 'Emoji' }), b, 'icon');
+  const emojis = el('div', { className: 'emojis' });
+  EMOJIS.forEach((em) => {
+    const x = el('button', { textContent: em, title: em });
+    x.onclick = () => { b.icon = em; icon.value = em; renderGrid(); };
+    emojis.append(x);
+  });
+
+  const bgType = el('select');
+  [['solid', 'Color sólido'], ['gradient', 'Degradado']].forEach(([v, t]) => bgType.append(el('option', { value: v, textContent: t })));
+  bgType.value = b.gradient ? 'gradient' : 'solid';
+  bgType.onchange = () => {
+    if (bgType.value === 'gradient') b.gradient = b.gradient || defaultGradient(b.color);
+    else delete b.gradient;
+    renderPanel(); renderGrid();
+  };
+  // Con degradado, b.color guarda su primer color (lo usan el Key Creator y los íconos).
+  const bgEditor = b.gradient
+    ? gradientEditor(b.gradient, () => { b.color = sortedStops(b.gradient)[0].color; renderGrid(); })
+    : el('div', { style: 'margin-top:6px' }, colorField(b.color, (c) => { b.color = c; renderGrid(); }));
+
+  const type = el('select');
+  Object.entries(TYPES).forEach(([v, t]) => type.append(el('option', { value: v, textContent: t })));
+  type.value = b.action.type;
+  type.onchange = () => {
+    const defaults = { app: { name: '' }, url: { url: 'https://' }, keystroke: { key: '', modifiers: [] }, keycode: { code: 36, modifiers: [] },
+      media: { command: 'playpause', app: 'Spotify' }, volume: { delta: 10 }, mute: {}, shell: { command: '' }, page: { to: 'home' } };
+    b.action = { type: type.value, ...defaults[type.value] };
+    renderPanel(); renderGrid();
+  };
+
+  const test = el('button', { className: 'btn', textContent: '▶ Probar' });
+  test.onclick = async () => {
+    if (b.action.type === 'page') return goToPage(b.action.to);
+    try { await api('/editor/test', { method: 'POST', body: JSON.stringify(b.action) }); setStatus(`“${b.label}” funcionó`); }
+    catch (e) { setStatus('Error al probar: ' + e.message, true); }
+  };
+  const left = el('button', { className: 'btn', textContent: '←', title: 'Mover a la izquierda' });
+  left.onclick = () => move(selected, selected - 1);
+  const right = el('button', { className: 'btn', textContent: '→', title: 'Mover a la derecha' });
+  right.onclick = () => move(selected, selected + 1);
+  const dup = el('button', { className: 'btn', textContent: 'Duplicar' });
+  dup.onclick = () => { page().buttons.splice(selected + 1, 0, structuredClone(b)); select(selected + 1); };
+  const del = el('button', { className: 'btn danger', textContent: 'Eliminar' });
+  del.onclick = () => { page().buttons.splice(selected, 1); select(Math.min(selected, page().buttons.length - 1)); };
+
+  panel.replaceChildren(
+    el('h2', { textContent: `Botón ${selected + 1}` }),
+    ...field('Nombre', name),
+    ...imageSection,
+    el('label', { textContent: b.image ? 'Emoji (se usa si quitas la imagen)' : 'Emoji' }), icon, emojis,
+    el('label', { textContent: 'Fondo' }), bgType, bgEditor,
+    ...field('Acción', type),
+    ...actionFields(b),
+    el('div', { className: 'actions' }, test, left, right, dup, del)
+  );
+}
+
+// --- Recorte de imágenes ---
+// El navegador abre cualquier formato (PNG, JPG, SVG, GIF, BMP, WEBP); se recorta a un cuadrado y se exporta
+// como PNG de 256 × 256, que es lo único que recibe el Hub.
+
+const ICON_SIZE = 256;
+const MIN_RECOMMENDED = 144;
+const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/bmp', 'image/webp', 'image/svg+xml'];
+let crop = null;
+
+// Sube el contenido de un canvas como PNG y devuelve el nombre con que se guardó en icons/.
+async function uploadCanvas(canvas) {
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  const r = await fetch('/editor/icon', { method: 'POST', headers: { 'X-Nest-Deck': '1', 'Content-Type': 'image/png' }, body: blob });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.ok) throw new Error(j.error || r.statusText);
+  return j.image;
+}
+
+function openCropper(file, b) {
+  const type = file.type || (file.name.toLowerCase().endsWith('.svg') ? 'image/svg+xml' : '');
+  if (!IMAGE_TYPES.includes(type)) { setStatus('Formato no compatible: usa PNG, JPG, SVG, GIF, BMP o WEBP', true); return; }
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    const svg = type === 'image/svg+xml';
+    // Un SVG sin tamaño propio se dibuja a 512 px.
+    const w = img.naturalWidth || 512, h = img.naturalHeight || 512;
+    const fit = Math.min(ICON_SIZE / w, ICON_SIZE / h);
+    const fill = Math.max(ICON_SIZE / w, ICON_SIZE / h);
+    crop = { img, url, b, w, h, fit, max: fill * 4, scale: fit, x: 0, y: 0 };
+    let info = svg ? 'Imagen vectorial (SVG): se verá nítida.' : `Tamaño original: ${w} × ${h} px.`;
+    if (!svg && Math.min(w, h) < MIN_RECOMMENDED) info += ` ⚠️ Es pequeña: se recomienda al menos ${MIN_RECOMMENDED} × ${MIN_RECOMMENDED} px, puede verse borrosa.`;
+    if (w !== h) info += ' No es cuadrada: ajústala con el zoom.';
+    if (type === 'image/gif') info += ' Si es un GIF animado, se usará el primer cuadro.';
+    $('cropInfo').textContent = info;
+    $('cropper').hidden = false;
+    setZoomFromScale();
+    drawCrop();
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); setStatus('No se pudo abrir la imagen', true); };
+  img.src = url;
+}
+
+function closeCropper() {
+  if (crop) URL.revokeObjectURL(crop.url);
+  crop = null;
+  $('cropper').hidden = true;
+}
+
+// El zoom va de "ver toda la imagen" a 4 veces "rellenar", en escala logarítmica para que se sienta parejo.
+function setZoomFromScale() { $('cropZoom').value = Math.log(crop.scale / crop.fit) / Math.log(crop.max / crop.fit) || 0; }
+function scaleFromZoom(t) { return crop.fit * Math.pow(crop.max / crop.fit, t); }
+
+function paintIcon(ctx, checker) {
+  ctx.clearRect(0, 0, ICON_SIZE, ICON_SIZE);
+  if (checker) {
+    // Cuadros grises para que se note la transparencia (solo en la vista previa, no en el PNG final).
+    for (let y = 0; y < ICON_SIZE; y += 16) for (let x = 0; x < ICON_SIZE; x += 16) {
+      ctx.fillStyle = (x + y) / 16 % 2 ? '#d0d0d4' : '#f2f2f4';
+      ctx.fillRect(x, y, 16, 16);
+    }
+  }
+  const dw = crop.w * crop.scale, dh = crop.h * crop.scale;
+  ctx.drawImage(crop.img, (ICON_SIZE - dw) / 2 + crop.x, (ICON_SIZE - dh) / 2 + crop.y, dw, dh);
+}
+
+function drawCrop() { paintIcon($('cropCanvas').getContext('2d'), true); }
+
+function setScale(scale) {
+  // Al cambiar el zoom se mantiene el mismo punto en el centro.
+  const ratio = scale / crop.scale;
+  crop.x *= ratio; crop.y *= ratio; crop.scale = scale;
+  drawCrop();
+}
+
+async function useCrop() {
+  const out = el('canvas', { width: ICON_SIZE, height: ICON_SIZE });
+  paintIcon(out.getContext('2d'), false);
+  const image = await uploadCanvas(out);
+  const b = crop.b;
+  b.image = image;
+  if (!b.style) b.style = 'icon';
+  delete b.design;
+  closeCropper();
+  renderPanel(); renderGrid();
+  setStatus('Imagen lista. Pulsa Guardar para enviarla al Nest Hub.');
+}
+
+function initCropper() {
+  const canvas = $('cropCanvas');
+  let drag = null;
+  canvas.onpointerdown = (e) => { drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); };
+  canvas.onpointermove = (e) => {
+    if (!drag || !crop) return;
+    const k = ICON_SIZE / canvas.clientWidth;
+    crop.x += (e.clientX - drag.x) * k; crop.y += (e.clientY - drag.y) * k;
+    drag = { x: e.clientX, y: e.clientY };
+    drawCrop();
+  };
+  canvas.onpointerup = canvas.onpointercancel = () => { drag = null; };
+  canvas.onwheel = (e) => {
+    e.preventDefault();
+    const t = Math.min(1, Math.max(0, Number($('cropZoom').value) - e.deltaY * 0.0015));
+    $('cropZoom').value = t;
+    setScale(scaleFromZoom(t));
+  };
+  $('cropZoom').oninput = () => setScale(scaleFromZoom(Number($('cropZoom').value)));
+  $('cropFit').onclick = () => { crop.x = crop.y = 0; crop.scale = crop.fit; setZoomFromScale(); drawCrop(); };
+  $('cropFill').onclick = () => { crop.x = crop.y = 0; crop.scale = Math.max(ICON_SIZE / crop.w, ICON_SIZE / crop.h); setZoomFromScale(); drawCrop(); };
+  $('cropCancel').onclick = closeCropper;
+  $('cropUse').onclick = () => useCrop().catch((e) => setStatus('No se pudo subir la imagen: ' + e.message, true));
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && crop) closeCropper(); });
+}
+
+// --- Key Creator ---
+// Diseña el ícono (fondo, emoji o imagen, texto) y lo exporta como PNG con la forma real del botón en el Hub,
+// para usarlo como "Imagen completa". Los parámetros se guardan en el botón (b.design) para poder reeditarlo.
+
+const FONTS = [['system-ui', 'Sistema'], ['ui-rounded, system-ui', 'Redondeada'], ['Georgia, serif', 'Serif'],
+  ['Menlo, monospace', 'Mono'], ['Impact, sans-serif', 'Impact'], ['"Marker Felt", fantasy', 'Marcador']];
+const BACKGROUNDS = [['solid', 'Color sólido'], ['gradient', 'Degradado'], ['none', 'Transparente (color del botón)']];
+
+// Diseños guardados antes del editor de degradados: los fondos "linear-v/h/d" y "radial" con dos colores
+// se pasan a un degradado equivalente.
+function upgradeDesign(d) {
+  if (/^linear-|^radial$/.test(d.bg)) {
+    d.gradient = {
+      type: d.bg === 'radial' ? 'radial' : 'linear',
+      angle: { 'linear-v': 180, 'linear-h': 90, 'linear-d': 135 }[d.bg] || 135,
+      stops: [{ pos: 0, color: d.color1 }, { pos: 100, color: d.color2 || shade(d.color1, -60) }],
+    };
+    d.bg = 'gradient';
+  }
+  if (!d.gradient) d.gradient = defaultGradient(d.color1);
+  delete d.color2;
+  return d;
+}
+
+// Gradiente de canvas equivalente al de CSS (mismo ángulo y mismo largo de línea).
+function canvasGradient(ctx, W, H, g) {
+  let grad;
+  if (g.type === 'radial') {
+    grad = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.hypot(W, H) / 2);
+  } else {
+    const a = (g.angle * Math.PI) / 180, dx = Math.sin(a), dy = -Math.cos(a);
+    const half = Math.abs((W / 2) * dx) + Math.abs((H / 2) * dy);
+    grad = ctx.createLinearGradient(W / 2 - dx * half, H / 2 - dy * half, W / 2 + dx * half, H / 2 + dy * half);
+  }
+  sortedStops(g).forEach((s) => grad.addColorStop(s.pos / 100, s.color));
+  return grad;
+}
+const CONTENTS = [['emoji', 'Emoji'], ['image', 'Imagen'], ['none', 'Nada (solo texto)']];
+const TEXT_POS = [['top', 'Arriba'], ['center', 'Centro'], ['bottom', 'Abajo']];
+
+let kc = null;
+const imageCache = {};
+
+function loadIconImage(name) {
+  if (!imageCache[name]) {
+    imageCache[name] = new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = '/icons/' + name;
+    });
+  }
+  return imageCache[name];
+}
+
+// Medida del botón en el Hub (pantalla 1024 × 600, márgenes de 18 px y separación de 14 px), escalada a 288 px.
+function keySize() {
+  const c = page().columns, r = gridRows();
+  const w = (1024 - 36 - (c - 1) * 14) / c, h = (600 - 36 - (r - 1) * 14) / r;
+  const k = 288 / Math.max(w, h);
+  return { W: Math.round(w * k), H: Math.round(h * k) };
+}
+
+function shade(hex, amount) {
+  const n = parseInt((hex || '#444444').slice(1).padEnd(6, '0'), 16);
+  const ch = (v) => Math.max(0, Math.min(255, v + amount)).toString(16).padStart(2, '0');
+  return '#' + ch(n >> 16) + ch((n >> 8) & 255) + ch(n & 255);
+}
+
+function defaultDesign(b) {
+  const color = /^#[0-9a-f]{6}$/i.test(b.color || '') ? b.color : '#2d6cdf';
+  return {
+    bg: b.gradient ? 'gradient' : 'solid', color1: color,
+    gradient: b.gradient ? structuredClone(b.gradient) : defaultGradient(color),
+    content: b.image ? 'image' : (b.icon ? 'emoji' : 'none'), emoji: b.icon || '⭐', image: b.image || null,
+    contentSize: 52, contentY: -12,
+    text: b.label || '', font: 'system-ui', textSize: 30, textColor: '#ffffff', textPos: 'bottom', bold: true, shadow: true,
+  };
+}
+
+const PRESETS = [
+  ['Clásico', (d) => ({ contentSize: 52, contentY: -12, textPos: 'bottom', textSize: 30 })],
+  ['Ícono grande', (d) => ({ content: d.content === 'none' ? 'emoji' : d.content, contentSize: 80, contentY: 0, text: '' })],
+  ['Letras', (d) => ({ content: 'none', text: initials(kc.b.label), textPos: 'center', textSize: 110, bold: true })],
+  ['Degradado', (d) => ({ bg: 'gradient', gradient: defaultGradient(d.color1) })],
+];
+
+function initials(label) {
+  const words = (label || '?').trim().split(/\s+/).filter((w) => /\w/.test(w));
+  return (words.length > 1 ? words[0][0] + words[1][0] : (words[0] || '?').slice(0, 2)).toUpperCase();
+}
+
+async function paintDesign(canvas, d) {
+  const { width: W, height: H } = canvas;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+
+  if (d.bg !== 'none') {
+    ctx.fillStyle = d.bg === 'gradient' ? canvasGradient(ctx, W, H, d.gradient) : d.color1;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  const shadow = (on) => {
+    ctx.shadowColor = on ? 'rgba(0,0,0,.45)' : 'transparent';
+    ctx.shadowBlur = on ? 8 : 0;
+    ctx.shadowOffsetY = on ? 3 : 0;
+  };
+  const size = (d.contentSize / 100) * Math.min(W, H);
+  const cy = H / 2 + (d.contentY / 100) * H;
+  shadow(d.shadow);
+  if (d.content === 'emoji' && d.emoji) {
+    ctx.font = `${size}px "Apple Color Emoji", system-ui`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(d.emoji, W / 2, cy + size * 0.06);
+  } else if (d.content === 'image' && d.image) {
+    const img = await loadIconImage(d.image);
+    const k = size / Math.max(img.naturalWidth, img.naturalHeight);
+    const w = img.naturalWidth * k, h = img.naturalHeight * k;
+    ctx.drawImage(img, (W - w) / 2, cy - h / 2, w, h);
+  }
+
+  const lines = (d.text || '').split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 2);
+  if (lines.length) {
+    // Achica la letra hasta que la línea más larga quepa con un margen de 10 px por lado.
+    let px = d.textSize;
+    const font = () => `${d.bold ? 'bold ' : ''}${px}px ${d.font}`;
+    ctx.font = font();
+    while (px > 10 && Math.max(...lines.map((l) => ctx.measureText(l).width)) > W - 20) { px--; ctx.font = font(); }
+    const lh = px * 1.1, block = lh * lines.length;
+    const top = d.textPos === 'top' ? 12 : d.textPos === 'center' ? (H - block) / 2 : H - 14 - block;
+    ctx.fillStyle = d.textColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    lines.forEach((l, i) => ctx.fillText(l, W / 2, top + lh * i + lh / 2));
+  }
+  shadow(false);
+}
+
+function redrawCreator() {
+  paintDesign($('kcCanvas'), kc.d).catch(() => setStatus('No se pudo dibujar la imagen del diseño', true));
+}
+
+function kcField(labelText, input) { return el('div', {}, el('label', { textContent: labelText }), input); }
+
+function kcInput(type, key, { options, rebuild, ...props } = {}, transform = (v) => v) {
+  const tag = type === 'select' || type === 'textarea' ? type : 'input';
+  const input = el(tag, tag === 'input' ? { type, ...props } : props);
+  if (options) options.forEach(([v, t]) => input.append(el('option', { value: v, textContent: t })));
+  if (type === 'checkbox') input.checked = !!kc.d[key]; else input.value = kc.d[key] ?? '';
+  input.oninput = input.onchange = () => {
+    kc.d[key] = type === 'checkbox' ? input.checked : transform(input.value);
+    if (rebuild) renderCreatorControls();
+    redrawCreator();
+  };
+  return input;
+}
+
+function renderCreatorControls() {
+  const d = kc.d;
+  const c = [];
+
+  c.push(el('h3', { textContent: 'Fondo' }), kcField('Tipo', kcInput('select', 'bg', { options: BACKGROUNDS, rebuild: true })));
+  if (d.bg === 'solid') c.push(kcField('Color', colorField(d.color1, (v) => { d.color1 = v; redrawCreator(); })));
+  if (d.bg === 'gradient') c.push(gradientEditor(d.gradient, redrawCreator));
+
+  c.push(el('h3', { textContent: 'Ícono' }), kcField('Qué mostrar', kcInput('select', 'content', { options: CONTENTS, rebuild: true })));
+  if (d.content === 'emoji') {
+    const input = kcInput('text', 'emoji', { maxLength: 8, placeholder: 'Emoji' });
+    const pal = el('div', { className: 'emojis small' });
+    EMOJIS.forEach((em) => {
+      const x = el('button', { textContent: em });
+      x.onclick = () => { d.emoji = em; input.value = em; redrawCreator(); };
+      pal.append(x);
+    });
+    c.push(kcField('Emoji', input), pal);
+  } else if (d.content === 'image') {
+    const pick = el('button', { className: 'btn', textContent: d.image ? 'Cambiar imagen…' : 'Elegir imagen…' });
+    pick.onclick = () => {
+      $('fileInput').value = '';
+      $('fileInput').onchange = () => { if ($('fileInput').files[0]) setCreatorImage($('fileInput').files[0]); };
+      $('fileInput').click();
+    };
+    c.push(el('div', { style: 'margin-top:8px' }, pick));
+  }
+  if (d.content !== 'none') {
+    c.push(el('div', { className: 'cols' },
+      kcField('Tamaño', kcInput('range', 'contentSize', { min: 15, max: 100 }, Number)),
+      kcField('Posición vertical', kcInput('range', 'contentY', { min: -40, max: 40 }, Number))));
+  }
+
+  c.push(el('h3', { textContent: 'Texto' }),
+    kcField('Texto (máximo 2 líneas)', kcInput('textarea', 'text', { rows: 2, style: 'min-height:52px;font-family:inherit;font-size:14px' })),
+    el('div', { className: 'cols' },
+      kcField('Fuente', kcInput('select', 'font', { options: FONTS })),
+      kcField('Posición', kcInput('select', 'textPos', { options: TEXT_POS }))),
+    el('div', { className: 'cols' },
+      kcField('Tamaño', kcInput('range', 'textSize', { min: 12, max: 140 }, Number)),
+      kcField('Color', colorField(d.textColor, (v) => { d.textColor = v; redrawCreator(); }))),
+    el('div', { className: 'cols' },
+      el('label', { className: 'check' }, kcInput('checkbox', 'bold'), 'Negrita'),
+      el('label', { className: 'check' }, kcInput('checkbox', 'shadow'), 'Sombra')));
+
+  $('kcControls').replaceChildren(...c);
+}
+
+// Una imagen dentro del diseño se guarda aparte (hasta 512 px, sin recortar) para poder reeditar el diseño.
+function setCreatorImage(file) {
+  const type = file.type || (file.name.toLowerCase().endsWith('.svg') ? 'image/svg+xml' : '');
+  if (!IMAGE_TYPES.includes(type)) { setStatus('Formato no compatible: usa PNG, JPG, SVG, GIF, BMP o WEBP', true); return; }
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = async () => {
+    const w = img.naturalWidth || 512, h = img.naturalHeight || 512;
+    const k = Math.min(1, 512 / Math.max(w, h));
+    const out = el('canvas', { width: Math.round(w * k), height: Math.round(h * k) });
+    out.getContext('2d').drawImage(img, 0, 0, out.width, out.height);
+    URL.revokeObjectURL(url);
+    try {
+      kc.d.image = await uploadCanvas(out);
+      renderCreatorControls();
+      redrawCreator();
+    } catch (e) { setStatus('No se pudo subir la imagen: ' + e.message, true); }
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); setStatus('No se pudo abrir la imagen', true); };
+  img.src = url;
+}
+
+function openCreator(b) {
+  // Copia profunda: lo que se cambie aquí no toca el botón hasta pulsar "Usar diseño".
+  kc = { b, d: upgradeDesign({ ...defaultDesign(b), ...structuredClone(b.design || {}) }) };
+  const { W, H } = keySize();
+  $('kcCanvas').width = W;
+  $('kcCanvas').height = H;
+  $('kcPresets').replaceChildren(...PRESETS.map(([name, fn]) => {
+    const x = el('button', { className: 'btn', textContent: name });
+    x.onclick = () => { Object.assign(kc.d, fn(kc.d)); renderCreatorControls(); redrawCreator(); };
+    return x;
+  }));
+  renderCreatorControls();
+  redrawCreator();
+  $('creator').hidden = false;
+}
+
+function closeCreator() { closePicker(); kc = null; $('creator').hidden = true; }
+
+async function useCreator() {
+  await paintDesign($('kcCanvas'), kc.d);
+  const image = await uploadCanvas($('kcCanvas'));
+  const b = kc.b;
+  b.image = image;
+  b.style = 'full';
+  b.design = structuredClone(kc.d);
+  if (kc.d.bg === 'solid') b.color = kc.d.color1;
+  if (kc.d.bg === 'gradient') b.color = sortedStops(kc.d.gradient)[0].color;
+  closeCreator();
+  renderPanel(); renderGrid();
+  setStatus('Diseño listo. Pulsa Guardar para enviarlo al Nest Hub.');
+}
+
+function initCreator() {
+  $('kcCancel').onclick = closeCreator;
+  $('kcUse').onclick = () => useCreator().catch((e) => setStatus('No se pudo usar el diseño: ' + e.message, true));
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && kc) closeCreator(); });
+}
+
+// --- Pantallas ---
+
+function renderTabs() {
+  const tabs = deck.pages.map((p, i) => {
+    const t = el('button', { className: 'tab' + (i === pageIdx ? ' active' : ''), textContent: (i === 0 ? '🏠 ' : '') + p.name });
+    t.onclick = () => showPage(i);
+    // Soltar un botón sobre una pestaña lo mueve al final de esa pantalla.
+    t.ondragover = (e) => { if (dragFrom >= 0 && i !== pageIdx) { e.preventDefault(); t.classList.add('drag-over'); } };
+    t.ondragleave = () => t.classList.remove('drag-over');
+    t.ondrop = (e) => {
+      e.preventDefault();
+      const [b] = page().buttons.splice(dragFrom, 1);
+      deck.pages[i].buttons.push(b);
+      dragFrom = -1;
+      setStatus(`“${b.label}” se movió a “${deck.pages[i].name}”`);
+      showPage(pageIdx);
+    };
+    return t;
+  });
+  const add = el('button', { className: 'tab new', textContent: '＋ Nueva pantalla' });
+  add.onclick = addPage;
+  $('tabs').replaceChildren(...tabs, add);
+}
+
+function renderPageBar() {
+  const p = page();
+  const name = el('input', { type: 'text', value: p.name, maxLength: 30, title: 'Nombre de la pantalla' });
+  name.oninput = () => { p.name = name.value; renderTabs(); dirty(); };
+  const left = el('button', { className: 'btn', textContent: '←', title: 'Mover pantalla a la izquierda' });
+  left.onclick = () => movePage(-1);
+  const right = el('button', { className: 'btn', textContent: '→', title: 'Mover pantalla a la derecha' });
+  right.onclick = () => movePage(1);
+  const del = el('button', { className: 'btn danger', textContent: 'Eliminar pantalla' });
+  del.onclick = deletePage;
+  del.disabled = deck.pages.length === 1;
+  const info = el('span', { className: 'warn', textContent: pageIdx === 0 ? 'Pantalla principal: es la que aparece al abrir la botonera.' : '' });
+  $('pageBar').replaceChildren(name, left, right, del, info);
+}
+
+function showPage(i) {
+  pageIdx = Math.max(0, Math.min(i, deck.pages.length - 1));
+  selected = -1;
+  $('columns').value = page().columns;
+  renderTabs(); renderPageBar(); renderPanel(); renderGrid();
+}
+
+function goToPage(target) {
+  const n = deck.pages.length;
+  const i = target === 'home' ? 0 : target === 'next' ? (pageIdx + 1) % n : target === 'prev' ? (pageIdx - 1 + n) % n
+    : deck.pages.findIndex((p) => p.id === target);
+  if (i >= 0) { showPage(i); setStatus(`Probado: ahora estás en “${page().name}”`); }
+}
+
+function addPage() {
+  if (deck.pages.length >= 20) { setStatus('Máximo 20 pantallas', true); return; }
+  let id;
+  do id = 'p-' + Math.random().toString(36).slice(2, 8); while (deck.pages.some((p) => p.id === id));
+  // Cada pantalla nueva empieza con un botón para volver a la principal.
+  deck.pages.push({ id, name: `Pantalla ${deck.pages.length + 1}`, columns: page().columns,
+    buttons: [{ label: 'Inicio', icon: '🏠', color: '#555555', action: { type: 'page', to: 'home' } }] });
+  showPage(deck.pages.length - 1);
+  setStatus('Pantalla creada. Agrega en otra pantalla un botón “Ir a otra pantalla” para llegar a ella.');
+}
+
+function movePage(dir) {
+  const to = pageIdx + dir;
+  if (to < 0 || to >= deck.pages.length) return;
+  const [p] = deck.pages.splice(pageIdx, 1);
+  deck.pages.splice(to, 0, p);
+  showPage(to);
+}
+
+function deletePage() {
+  const p = page();
+  if (deck.pages.length === 1) return;
+  if (p.buttons.length && !confirm(`¿Eliminar la pantalla “${p.name}” y sus ${p.buttons.length} botones?`)) return;
+  deck.pages.splice(pageIdx, 1);
+  // Los botones que llevaban a esta pantalla ahora llevan a la principal.
+  let fixed = 0;
+  deck.pages.forEach((q) => q.buttons.forEach((b) => {
+    if (b.action.type === 'page' && b.action.to === p.id) { b.action.to = 'home'; fixed++; }
+  }));
+  showPage(Math.min(pageIdx, deck.pages.length - 1));
+  setStatus(`Pantalla eliminada${fixed ? `; ${fixed} botón(es) que llevaban a ella ahora van a la principal` : ''}.`);
+}
+
+function select(i) { selected = i; renderPanel(); renderGrid(); }
+
+async function save() {
+  try {
+    await api('/editor/deck', { method: 'PUT', body: JSON.stringify(deck) });
+    saved = JSON.stringify(deck);
+    dirty();
+    setStatus('Guardado. El Nest Hub se actualizará en unos segundos.');
+  } catch (e) { setStatus('No se pudo guardar: ' + e.message, true); }
+}
+
+const HUB_TEXT = { deck: 'Hub: botonera abierta', idle: 'Hub: en reposo', offline: 'Hub: sin conexión', unknown: 'Hub: revisando…' };
+async function refreshHubState() {
+  try {
+    const s = await api('/editor/status');
+    $('hubState').className = 'hub-state ' + s.state;
+    $('hubState').textContent = s.state === 'other' ? `Hub: usando ${s.app}` : HUB_TEXT[s.state] || 'Hub: ?';
+  } catch {
+    $('hubState').className = 'hub-state offline';
+    $('hubState').textContent = 'Hub: sin servidor';
+  }
+}
+
+async function init() {
+  deck = await api('/editor/deck');
+  saved = JSON.stringify(deck);
+  for (let c = 1; c <= 8; c++) $('columns').append(el('option', { value: c, textContent: c }));
+  $('columns').value = page().columns;
+  $('columns').onchange = () => { page().columns = Number($('columns').value); renderGrid(); };
+  $('save').onclick = save;
+  initCropper();
+  initCreator();
+  $('add').onclick = () => {
+    page().buttons.push({ label: 'Nuevo', icon: '⭐', color: '#2d6cdf', action: { type: 'app', name: '' } });
+    select(page().buttons.length - 1);
+  };
+  window.addEventListener('keydown', (e) => { if (e.metaKey && e.key === 's') { e.preventDefault(); if (dirty()) save(); } });
+  window.addEventListener('beforeunload', (e) => { if (JSON.stringify(deck) !== saved) e.preventDefault(); });
+  $('autoReopen').checked = deck.autoReopen !== false;
+  $('autoReopen').onchange = () => { deck.autoReopen = $('autoReopen').checked; dirty(); };
+  $('castNow').onclick = async () => {
+    $('castNow').disabled = true;
+    setStatus('Abriendo la botonera en el Nest Hub…');
+    try { await api('/editor/cast', { method: 'POST' }); setStatus('Botonera abierta en el Nest Hub.'); }
+    catch (e) { setStatus('No se pudo abrir en el Hub: ' + e.message, true); }
+    $('castNow').disabled = false;
+    refreshHubState();
+  };
+  refreshHubState();
+  setInterval(refreshHubState, 5000);
+  showPage(0);
+  setStatus('');
+  api('/editor/apps').then((apps) => apps.forEach((a) => $('apps').append(el('option', { value: a })))).catch(() => {});
+}
+init().catch((e) => setStatus('No se pudo cargar: ' + e.message, true));
+</script>
+</body>
+</html>

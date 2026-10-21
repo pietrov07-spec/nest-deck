@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Nest Deck</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body { margin: 0; height: 100%; background: #111; color: #fff; font-family: -apple-system, Roboto, sans-serif; overflow: hidden; }
+  #grid { display: grid; gap: 14px; padding: 18px; height: 100vh; }
+  button {
+    border: 0; border-radius: 18px; color: #fff; font: inherit; font-size: 20px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    box-shadow: inset 0 -4px 0 rgba(0,0,0,.25); transition: transform .08s, filter .08s;
+  }
+  button .icon { font-size: 52px; line-height: 1; }
+  button img.icon { width: 60px; height: 60px; pointer-events: none; object-fit: contain; }
+  button.full { padding: 0; overflow: hidden; }
+  button.full img.cover { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+  button:active, button.pressed { transform: scale(.94); filter: brightness(1.3); }
+  button.err { outline: 4px solid #ff3b30; }
+  #status { position: fixed; bottom: 4px; right: 10px; font-size: 12px; opacity: .4; }
+  #toast { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,.78); color: #fff;
+    padding: 18px 34px; border-radius: 18px; font-size: 30px; font-weight: 600; pointer-events: none; opacity: 0; transition: opacity .25s; }
+  #toast.show { opacity: 1; }
+
+  /* Pantalla de bienvenida: degradado negro → gris grafito y texto delgado, espaciado. */
+  #welcome { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at 50% 38%, #3a3a3c 0%, #1c1c1e 48%, #000 100%); transition: opacity .7s ease; }
+  #welcome.hide { opacity: 0; pointer-events: none; }
+  #welcome h1 { margin: 0; font-family: "Google Sans", Roboto, -apple-system, sans-serif; font-weight: 300; font-size: 58px;
+    letter-spacing: .14em; color: #f2f2f7; text-shadow: 0 2px 18px rgba(0,0,0,.6); opacity: 0; transform: translateY(8px);
+    transition: opacity .9s ease, transform .9s ease; text-align: center; padding: 0 40px; }
+  #welcome .line { height: 1px; width: 0; margin-top: 26px; background: linear-gradient(90deg, transparent, #8e8e93, transparent);
+    transition: width 1.2s ease .3s; }
+  #welcome.show h1 { opacity: 1; transform: none; }
+  #welcome.show .line { width: 340px; }
+</style>
+</head>
+<body>
+<div id="grid"></div>
+<div id="status"></div>
+<div id="toast"></div>
+<div id="welcome"><h1 id="welcomeText"></h1><div class="line"></div></div>
+<script>
+  // La bienvenida tapa la pantalla desde el primer instante; si no toca mostrarla (recarga por un cambio
+  // del editor, o está apagada en deck.json) se quita en cuanto llega el deck.
+  const welcome = document.getElementById('welcome');
+  const reloadedByChange = new URLSearchParams(location.search).has('r');
+  function showWelcome(w) {
+    if (reloadedByChange || !w || w.enabled === false || !w.text) { welcome.remove(); return; }
+    document.getElementById('welcomeText').textContent = w.text;
+    requestAnimationFrame(() => welcome.classList.add('show'));
+    const hide = () => { welcome.classList.add('hide'); setTimeout(() => welcome.remove(), 800); };
+    welcome.addEventListener('pointerdown', hide, { once: true });
+    setTimeout(hide, 2600);
+  }
+</script>
+<script>
+  const grid = document.getElementById('grid');
+  const status = document.getElementById('status');
+  const toast = document.getElementById('toast');
+  let deck = null, pageId = null, toastTimer = 0;
+
+  // La pantalla actual va en la dirección (#p=…) para conservarla cuando la página se recarga por un cambio.
+  const pageFromHash = () => (location.hash.match(/p=([a-z0-9-]+)/) || [])[1];
+  const pageIndex = () => Math.max(0, deck.pages.findIndex((p) => p.id === pageId));
+
+  function goTo(target) {
+    const n = deck.pages.length, i = pageIndex();
+    const next = target === 'home' ? 0 : target === 'next' ? (i + 1) % n : target === 'prev' ? (i - 1 + n) % n
+      : deck.pages.findIndex((p) => p.id === target);
+    if (next < 0) return;
+    render(deck.pages[next].id);
+    toast.textContent = deck.pages[next].name;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 900);
+  }
+
+  async function press(i, el, b) {
+    el.classList.add('pressed');
+    setTimeout(() => el.classList.remove('pressed'), 150);
+    if (b.nav) return goTo(b.nav);
+    try {
+      const r = await fetch(`/press/${pageId}/${i}`, { method: 'POST' });
+      const j = await r.json();
+      el.classList.toggle('err', !j.ok);
+      status.textContent = j.ok ? '' : j.error;
+    } catch (e) {
+      el.classList.add('err');
+      status.textContent = 'Sin conexión con la Mac';
+    }
+  }
+
+  const hubLog = (msg) => fetch('/log', { method: 'POST', body: String(msg) }).catch(() => {});
+  window.addEventListener('error', (e) => hubLog(`error: ${e.message} (${e.lineno})`));
+  document.addEventListener('visibilitychange', () => hubLog('visible=' + document.visibilityState));
+
+  // Igual que en el editor: { type, angle, stops: [{ pos, color }] } → CSS.
+  function cssGradient(g) {
+    const stops = g.stops.slice().sort((a, b) => a.pos - b.pos).map((s) => `${s.color} ${s.pos}%`).join(', ');
+    return g.type === 'radial' ? `radial-gradient(circle farthest-corner at center, ${stops})` : `linear-gradient(${g.angle}deg, ${stops})`;
+  }
+
+  const fetchDeck = async () => (await fetch('/deck?t=' + Date.now(), { cache: 'no-store' })).text();
+  let current = '';
+  async function load() {
+    const text = await fetchDeck();
+    current = text;
+    deck = JSON.parse(text);
+    render(pageFromHash());
+    showWelcome(deck.welcome);
+  }
+
+  function render(id) {
+    pageId = (deck.pages.find((p) => p.id === id) || deck.pages[0]).id;
+    history.replaceState(null, '', '#p=' + pageId);
+    const page = deck.pages[pageIndex()];
+    // Como mínimo, las mismas filas que la principal: así los botones miden igual en todas las pantallas.
+    const home = deck.pages[0];
+    const rows = Math.max(1, Math.ceil(page.buttons.length / page.columns), Math.ceil(home.buttons.length / home.columns));
+    grid.style.gridTemplateColumns = `repeat(${page.columns}, 1fr)`;
+    grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+    grid.innerHTML = '';
+    page.buttons.forEach((b, i) => {
+      const el = document.createElement('button');
+      el.style.background = b.gradient ? cssGradient(b.gradient) : (b.color || '#444');
+      el.setAttribute('aria-label', b.label);
+      el.addEventListener('pointerdown', () => press(i, el, b));
+      grid.appendChild(el);
+
+      // Imagen completa: ocupa todo el botón, sin texto.
+      if (b.image && b.style === 'full') {
+        el.classList.add('full');
+        const img = document.createElement('img');
+        img.className = 'cover';
+        img.src = '/icons/' + b.image;
+        el.append(img);
+        return;
+      }
+      // El ícono es la imagen subida o el emoji dibujado por la Mac; si falla, se muestra el emoji como texto.
+      let icon = document.createElement('span');
+      icon.className = 'icon';
+      icon.textContent = b.icon || '';
+      if (b.image || b.icon) {
+        const img = document.createElement('img');
+        img.className = 'icon';
+        img.alt = b.icon || '';
+        img.src = b.image ? '/icons/' + b.image : '/emoji?e=' + encodeURIComponent(b.icon);
+        const text = icon;
+        img.onerror = () => img.replaceWith(text);
+        icon = img;
+      }
+      const label = document.createElement('span');
+      label.textContent = b.label;
+      el.append(icon, label);
+    });
+  }
+  load()
+    .then(() => {
+      const last = grid.lastElementChild;
+      hubLog(`botonera cargada (${deck.pages.length} pantallas, en “${deck.pages[pageIndex()].name}”) · visible=${document.visibilityState}` +
+        ` · pantalla=${innerWidth}x${innerHeight} · último=${last && last.textContent} ${last && getComputedStyle(last).backgroundColor}`);
+    })
+    .catch((e) => { welcome.remove(); status.textContent = 'No se pudo cargar el deck'; hubLog('no se pudo cargar: ' + e.message); });
+
+  // Cuando cambia deck.json, recarga la página completa (más fiable que redibujar en el navegador del Hub).
+  setInterval(async () => {
+    try {
+      const text = await fetchDeck();
+      if (current && text !== current) {
+        hubLog('cambio detectado, recargando');
+        location.replace('/?r=1&t=' + Date.now() + '#p=' + pageId);
+      }
+    } catch {}
+  }, 3000);
+</script>
+</body>
+</html>
