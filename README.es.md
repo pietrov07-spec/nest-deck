@@ -19,6 +19,10 @@
 </p>
 
 <p align="center">
+  <a href="https://nest-deck-demo.vercel.app"><img alt="Prueba la demo en vivo" src="https://img.shields.io/badge/%E2%96%B6%20Prueba%20la%20demo%20en%20vivo-1a73e8?style=for-the-badge"></a>
+</p>
+
+<p align="center">
   <a href="README.md">🇬🇧 Read in English</a> ·
   <a href="#-empieza-en-2-minutos">Empezar</a> ·
   <a href="#-qué-puede-hacer">Funciones</a> ·
@@ -85,6 +89,8 @@ flowchart LR
 3. Al tocar un botón, el Hub avisa a tu Mac y la Mac ejecuta la acción (AppleScript, `open`, terminal…).
 
 ## 🚀 Empieza en 2 minutos
+
+**¿Solo quieres verlo?** Abre la **[demo en vivo](https://nest-deck-demo.vercel.app)**: la pantalla del Hub, el editor visual y una Mac simulada que muestra lo que haría cada botón, todo en tu navegador.
 
 **Necesitas:** una Mac (probado en macOS 26; versiones anteriores probablemente funcionan), un Google Nest Hub en la **misma red Wi‑Fi** y [Node.js 18+](https://nodejs.org).
 Se recomiendan las herramientas de línea de comandos de Xcode (`xcode-select --install`) para que los emojis se vean perfectos en el Hub.
@@ -203,6 +209,7 @@ Los botones no responden hasta que despierte. Conviene mantenerla despierta mien
 | `public/editor.html` | El editor visual (pantallas, recorte, Key Creator, color) |
 | `mediakey.swift`, `emoji2png.swift` | Ayudantes nativos: teclas multimedia y emojis de Apple para la fuente vieja del Hub |
 | `instalar.sh`, `iniciar.sh`, `Nest Deck.command` | Instalador, arranque y lanzador de doble clic |
+| `demo/`, `vercel.json` | Demo en vivo: un service worker hace el papel de la Mac en el navegador (`node demo/build.mjs`) |
 | [`docs/BITACORA.md`](docs/BITACORA.md) | Bitácora: cada problema que apareció y cómo se resolvió |
 
 ## 🗺️ Ideas y próximos pasos

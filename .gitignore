@@ -10,3 +10,8 @@ emoji2png
 
 *.log
 .DS_Store
+
+# Demo en vivo (se genera con node demo/build.mjs)
+demo-dist/
+.vercel
+.env*

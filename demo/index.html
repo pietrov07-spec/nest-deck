@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nest Deck · Demo en vivo</title>
+<meta name="description" content="Prueba Nest Deck en el navegador: la botonera del Nest Hub, el editor visual y una Mac simulada que muestra cada acción.">
+<meta property="og:title" content="Nest Deck · Demo en vivo">
+<meta property="og:description" content="Convierte tu Google Nest Hub en un Stream Deck para Mac. Pruébalo sin instalar nada.">
+<meta property="og:image" content="/hero.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='6' width='8' height='8' rx='2' fill='%231db954'/%3E%3Crect x='12' y='6' width='8' height='8' rx='2' fill='%237b5cff'/%3E%3Crect x='22' y='6' width='8' height='8' rx='2' fill='%23ff7a45'/%3E%3Crect x='2' y='18' width='8' height='8' rx='2' fill='%231a73e8'/%3E%3Crect x='12' y='18' width='8' height='8' rx='2' fill='%23f4b400'/%3E%3Crect x='22' y='18' width='8' height='8' rx='2' fill='%23e8453c'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Escritorio: el Hub y la Mac lado a lado, el editor debajo a todo el ancho. Móvil: todo en una columna. */
+:root{
+  --bg:#e9ecf0; --surface:#ffffff; --fg:#1b2230; --muted:#5b6475; --line:#d3d8e0;
+  --accent:#1a73e8; --accent-soft:#e3edfd; --fabric:#d9d6d0; --fabric-dark:#c7c3bc; --ok:#1e8e4f;
+  --display:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible","Helvetica Neue",Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#11151b; --surface:#1a2029; --fg:#e7ebf2; --muted:#9aa3b4; --line:#2b3340;
+  --accent:#8ab4f8; --accent-soft:#1f2c42; --fabric:#3a3b3e; --fabric-dark:#2c2d30; --ok:#5fd08d; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 var(--body)}
+.wrap{max-width:1240px;margin:0 auto;padding:28px max(16px,env(safe-area-inset-right,0px)) 64px max(16px,env(safe-area-inset-left,0px));display:grid;gap:28px}
+header{display:flex;flex-wrap:wrap;gap:16px 24px;align-items:flex-end;justify-content:space-between}
+h1{font:700 clamp(1.8rem,4vw,2.6rem)/1.05 var(--display);margin:0;letter-spacing:-.01em}
+.sub{margin:6px 0 0;color:var(--muted);max-width:60ch}
+.links{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.links a,.btn{font:600 .88rem var(--body);color:var(--fg);text-decoration:none;border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:999px;cursor:pointer}
+.links a.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.lang{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--surface)}
+.lang button{border:0;background:transparent;color:var(--muted);font:600 .82rem var(--body);padding:5px 12px;border-radius:999px;cursor:pointer}
+.lang button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.stage{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:900px){.stage{grid-template-columns:1fr}}
+.label{font:600 .74rem var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+
+/* El Nest Hub: pantalla de 1024 × 600 escalada, marco blanco y base de tela. */
+.hub{display:grid;justify-items:center}
+.bezel{width:100%;background:#f7f7f5;border-radius:22px;padding:2.2%;box-shadow:0 18px 40px rgba(0,0,0,.18),0 2px 0 rgba(0,0,0,.05)}
+.screen{position:relative;width:100%;aspect-ratio:1024/600;border-radius:8px;overflow:hidden;background:#000}
+.screen iframe{position:absolute;left:0;top:0;width:1024px;height:600px;border:0;transform-origin:0 0}
+.base{width:62%;height:34px;margin-top:-6px;border-radius:0 0 40px 40px;background:repeating-linear-gradient(90deg,var(--fabric) 0 3px,var(--fabric-dark) 3px 4px);box-shadow:0 10px 18px rgba(0,0,0,.12)}
+.hint{color:var(--muted);font-size:.9rem;margin:12px 0 0;text-align:center}
+
+/* La Mac simulada */
+.mac{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:grid}
+.menubar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px;border-bottom:1px solid var(--line);font:.8rem var(--mono);color:var(--muted)}
+.lights{display:flex;gap:6px}.lights i{width:11px;height:11px;border-radius:50%;display:block}
+.state{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line)}
+.state div{background:var(--surface);padding:12px 14px;min-width:0}
+.state b{display:block;font:600 .7rem var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.state span{font:700 1.02rem var(--display);overflow-wrap:anywhere}
+.vol{height:6px;border-radius:3px;background:var(--line);margin-top:8px;overflow:hidden}
+.vol i{display:block;height:100%;background:var(--accent);transition:width .25s}
+.log{list-style:none;margin:0;padding:6px 0;max-height:300px;overflow:auto;border-top:1px solid var(--line)}
+.log li{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;padding:8px 14px;font-size:.92rem}
+.log li+li{border-top:1px dashed var(--line)}
+.log time{font:.75rem var(--mono);color:var(--muted);padding-top:3px}
+.log .what{min-width:0;overflow-wrap:anywhere}
+.log .src{font:.72rem var(--mono);color:var(--muted)}
+.log .empty{display:block;color:var(--muted);padding:14px}
+.log li.new{animation:flash 1s ease}
+@keyframes flash{from{background:var(--accent-soft)}to{background:transparent}}
+@media (prefers-reduced-motion:reduce){.log li.new{animation:none}.vol i{transition:none}}
+
+.editor{display:grid;gap:10px}
+.editor-head{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;justify-content:space-between}
+.editor-head p{margin:0;color:var(--muted);font-size:.92rem;max-width:70ch}
+.editor iframe{width:100%;height:880px;border:1px solid var(--line);border-radius:14px;background:#fff}
+@media (max-width:700px){.editor iframe{height:760px}}
+.note{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;color:var(--muted);font-size:.92rem}
+.note strong{color:var(--fg)}
+#nosw{display:none}
+footer{color:var(--muted);font-size:.85rem;display:flex;flex-wrap:wrap;gap:6px 16px}
+footer a{color:inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Nest Deck</h1>
+      <p class="sub" data-i18n="sub"></p>
+    </div>
+    <div class="links">
+      <div class="lang" role="group" aria-label="Idioma / Language">
+        <button type="button" id="b-es" aria-pressed="true">ES</button>
+        <button type="button" id="b-en" aria-pressed="false">EN</button>
+      </div>
+      <a class="primary" href="https://github.com/pietrov07-spec/nest-deck" target="_blank" rel="noopener" data-i18n="gh"></a>
+      <a href="https://doi.org/10.5281/zenodo.24026336" target="_blank" rel="noopener">DOI</a>
+      <button type="button" class="btn" id="reset" data-i18n="reset"></button>
+    </div>
+  </header>
+
+  <div class="note" id="nosw" data-i18n-html="nosw"></div>
+
+  <section class="stage">
+    <div class="hub">
+      <p class="label" data-i18n="hubLabel"></p>
+      <div class="bezel"><div class="screen" id="screen"><iframe id="hubFrame" title="Nest Hub" tabindex="0"></iframe></div></div>
+      <div class="base" aria-hidden="true"></div>
+      <p class="hint" data-i18n="hubHint"></p>
+    </div>
+
+    <div>
+      <p class="label" data-i18n="macLabel"></p>
+      <div class="mac">
+        <div class="menubar"><span class="lights" aria-hidden="true"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></span><span id="clock"></span></div>
+        <div class="state">
+          <div><b data-i18n="sVol"></b><span id="volText">50</span><div class="vol"><i id="volBar" style="width:50%"></i></div></div>
+          <div><b data-i18n="sMusic"></b><span id="musicText"></span></div>
+          <div><b data-i18n="sApp"></b><span id="appText">Finder</span></div>
+          <div><b data-i18n="sKey"></b><span id="keyText">—</span></div>
+        </div>
+        <ul class="log" id="log" aria-live="polite"><li><span class="empty" data-i18n="empty"></span></li></ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="editor">
+    <div class="editor-head">
+      <p class="label" data-i18n="edLabel" style="margin:0"></p>
+      <p data-i18n="edHint"></p>
+    </div>
+    <iframe id="edFrame" title="Editor de Nest Deck"></iframe>
+  </section>
+
+  <div class="note" data-i18n-html="about"></div>
+
+  <footer>
+    <span>MIT · <a href="https://github.com/pietrov07-spec/nest-deck" target="_blank" rel="noopener">github.com/pietrov07-spec/nest-deck</a></span>
+    <span data-i18n="tm"></span>
+  </footer>
+</div>
+
+<script>
+const I18N = {
+  es: {
+    sub: 'Convierte tu Google Nest Hub en un Stream Deck para Mac. Esta demo corre completa en tu navegador: toca los botones del Hub y edítalos abajo.',
+    gh: 'Ver en GitHub', reset: 'Restaurar demo',
+    hubLabel: 'Google Nest Hub', hubHint: 'Toca un botón. Las flechas cambian de pantalla.',
+    macLabel: 'Tu Mac (simulada)', sVol: 'Volumen', sMusic: 'Música', sApp: 'App al frente', sKey: 'Último atajo',
+    empty: 'Aquí aparece lo que haría tu Mac con cada botón.',
+    edLabel: 'Editor visual', edHint: 'Cambia un nombre, un emoji o un degradado y pulsa Guardar: el Hub se actualiza en unos 3 segundos, igual que en la versión real.',
+    playing: '▶ Reproduciendo', paused: '⏸ En pausa', muted: 'silenciado',
+    fromHub: 'desde el Hub', fromEd: 'prueba del editor', cast: 'Botonera abierta en el Hub', saved: 'Botonera guardada',
+    act: {
+      app: (a) => `Abre la app ${a.name || '(sin nombre)'}`,
+      url: (a) => `Abre ${a.url}`,
+      keystroke: (a, k) => `Envía el atajo ${k}`,
+      keycode: (a, k) => `Pulsa la tecla ${k}`,
+      media: (a) => `${a.app || 'Spotify'}: ${({ playpause: 'reproducir / pausar', next: 'siguiente canción', previous: 'canción anterior' })[a.command] || a.command}`,
+      volume: (a) => `Volumen ${a.delta > 0 ? '+' : ''}${a.delta}`,
+      mute: () => 'Silenciar / activar sonido',
+      shell: (a) => `Ejecuta en Terminal: ${a.command}`,
+      page: () => 'Cambia de pantalla',
+    },
+    nosw: '<strong>Tu navegador no permite la demo.</strong> Necesita <em>service workers</em>, que algunos navegadores bloquean en ventanas privadas. Prueba en una ventana normal de Chrome, Safari, Edge o Firefox.',
+    about: '<strong>Qué es real y qué no.</strong> La pantalla del Hub y el editor son exactamente los del proyecto. Lo único simulado es la Mac: en la versión real, un pequeño servidor en Node.js manda la botonera al Nest Hub por Google Cast y ejecuta cada acción en macOS. Aquí tus cambios se guardan solo en este navegador.',
+    tm: 'No afiliado a Google ni a Elgato.',
+  },
+  en: {
+    sub: 'Turn your Google Nest Hub into a Stream Deck for Mac. This demo runs entirely in your browser: tap the Hub buttons and edit them below.',
+    gh: 'View on GitHub', reset: 'Reset demo',
+    hubLabel: 'Google Nest Hub', hubHint: 'Tap a button. The arrows switch screens.',
+    macLabel: 'Your Mac (simulated)', sVol: 'Volume', sMusic: 'Music', sApp: 'Frontmost app', sKey: 'Last shortcut',
+    empty: 'What your Mac would do with each button shows up here.',
+    edLabel: 'Visual editor', edHint: 'Change a name, an emoji or a gradient and press Guardar (Save): the Hub updates in about 3 seconds, just like the real thing. The editor UI is in Spanish.',
+    playing: '▶ Playing', paused: '⏸ Paused', muted: 'muted',
+    fromHub: 'from the Hub', fromEd: 'editor test', cast: 'Deck opened on the Hub', saved: 'Deck saved',
+    act: {
+      app: (a) => `Opens the ${a.name || '(unnamed)'} app`,
+      url: (a) => `Opens ${a.url}`,
+      keystroke: (a, k) => `Sends the ${k} shortcut`,
+      keycode: (a, k) => `Presses the ${k} key`,
+      media: (a) => `${a.app || 'Spotify'}: ${({ playpause: 'play / pause', next: 'next track', previous: 'previous track' })[a.command] || a.command}`,
+      volume: (a) => `Volume ${a.delta > 0 ? '+' : ''}${a.delta}`,
+      mute: () => 'Mute / unmute',
+      shell: (a) => `Runs in Terminal: ${a.command}`,
+      page: () => 'Switches screen',
+    },
+    nosw: '<strong>Your browser can’t run the demo.</strong> It needs service workers, which some browsers block in private windows. Try a normal Chrome, Safari, Edge or Firefox window.',
+    about: '<strong>What’s real and what isn’t.</strong> The Hub screen and the editor are exactly the project’s own. Only the Mac is simulated: in the real thing, a small Node.js server sends the deck to the Nest Hub over Google Cast and runs each action on macOS. Here, your changes are saved only in this browser.',
+    tm: 'Not affiliated with Google or Elgato.',
+  },
+};
+
+let lang = (navigator.language || 'es').toLowerCase().startsWith('es') ? 'es' : 'en';
+try { lang = localStorage.getItem('nd-demo-lang') || lang; } catch {}
+const $ = (id) => document.getElementById(id);
+
+const mac = { volume: 50, muted: false, playing: false, app: 'Finder', key: '—' };
+const entries = [];
+
+function applyLang() {
+  const t = I18N[lang];
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t[el.dataset.i18n]; });
+  document.querySelectorAll('[data-i18n-html]').forEach((el) => { el.innerHTML = t[el.dataset.i18nHtml]; });
+  $('b-es').setAttribute('aria-pressed', lang === 'es');
+  $('b-en').setAttribute('aria-pressed', lang === 'en');
+  renderMac();
+  renderLog();
+}
+function setLang(l) { lang = l; try { localStorage.setItem('nd-demo-lang', l); } catch {} applyLang(); }
+$('b-es').onclick = () => setLang('es');
+$('b-en').onclick = () => setLang('en');
+
+// --- La Mac simulada ---
+const MOD_SYM = { command: '⌘', shift: '⇧', option: '⌥', control: '⌃' };
+const KEYNAMES = { 36: 'Return', 48: 'Tab', 49: 'Space', 51: 'Backspace', 53: 'Esc', 117: 'Delete', 115: 'Home', 119: 'End',
+  116: 'PageUp', 121: 'PageDown', 123: '←', 124: '→', 125: '↓', 126: '↑', 122: 'F1', 120: 'F2', 99: 'F3', 118: 'F4',
+  96: 'F5', 97: 'F6', 98: 'F7', 100: 'F8', 101: 'F9', 109: 'F10', 103: 'F11', 111: 'F12' };
+function shortcut(a) {
+  const mods = (a.modifiers || []).map((m) => MOD_SYM[m] || '').join('');
+  if (a.type === 'keycode') return mods + (KEYNAMES[a.code] || a.code);
+  return mods + (a.key === ' ' ? 'Space' : String(a.key || '').toUpperCase());
+}
+
+function apply(a) {
+  switch (a.type) {
+    case 'volume': mac.volume = Math.max(0, Math.min(100, mac.volume + Number(a.delta || 0))); mac.muted = false; break;
+    case 'mute': mac.muted = !mac.muted; break;
+    case 'media': if (a.command === 'playpause') mac.playing = !mac.playing; else mac.playing = true; break;
+    case 'app': if (a.name) mac.app = a.name; break;
+    case 'url': mac.app = 'Safari'; break;
+    case 'keystroke': case 'keycode': mac.key = shortcut(a); break;
+    case 'shell': {
+      const say = String(a.command || '').match(/^say\s+["']?(.+?)["']?\s*$/);
+      if (say && 'speechSynthesis' in window) speechSynthesis.speak(new SpeechSynthesisUtterance(say[1]));
+      break;
+    }
+  }
+}
+
+function renderMac() {
+  const t = I18N[lang];
+  $('volText').textContent = mac.muted ? `${mac.volume} · ${t.muted}` : String(mac.volume);
+  $('volBar').style.width = (mac.muted ? 0 : mac.volume) + '%';
+  $('musicText').textContent = mac.playing ? t.playing : t.paused;
+  $('appText').textContent = mac.app;
+  $('keyText').textContent = mac.key;
+}
+
+function describe(e) {
+  const t = I18N[lang];
+  if (e.kind === 'cast') return [t.cast, ''];
+  if (e.kind === 'saved') return [t.saved, ''];
+  const f = t.act[e.action.type];
+  const what = f ? f(e.action, shortcut(e.action)) : e.action.type;
+  return [(e.label ? `${e.label} → ` : '') + what, e.from === 'editor' ? t.fromEd : t.fromHub];
+}
+
+function renderLog(fresh) {
+  const ul = $('log');
+  if (!entries.length) { ul.innerHTML = `<li><span class="empty">${I18N[lang].empty}</span></li>`; return; }
+  ul.replaceChildren(...entries.map((e, i) => {
+    const li = document.createElement('li');
+    if (fresh && i === 0) li.className = 'new';
+    const [what, src] = describe(e);
+    const time = document.createElement('time');
+    time.textContent = e.time;
+    const box = document.createElement('div');
+    box.className = 'what';
+    box.textContent = what;
+    if (src) { const s = document.createElement('div'); s.className = 'src'; s.textContent = src; box.append(s); }
+    li.append(time, box);
+    return li;
+  }));
+}
+
+function addEntry(e) {
+  e.time = new Date().toLocaleTimeString(lang === 'es' ? 'es-MX' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  entries.unshift(e);
+  entries.length = Math.min(entries.length, 40);
+  renderLog(true);
+}
+
+const tick = () => { $('clock').textContent = new Date().toLocaleTimeString(lang === 'es' ? 'es-MX' : 'en-US', { hour: '2-digit', minute: '2-digit' }); };
+tick(); setInterval(tick, 15000);
+
+// --- Escala de la pantalla del Hub (1024 × 600) ---
+const screen = $('screen'), hubFrame = $('hubFrame');
+new ResizeObserver(() => { hubFrame.style.transform = `scale(${screen.clientWidth / 1024})`; }).observe(screen);
+
+// --- Arranque: el service worker hace de Mac; los marcos se cargan cuando ya lo controla ---
+const loadFrames = () => { hubFrame.src = '/?hub=1'; $('edFrame').src = '/editor'; };
+
+async function start() {
+  if (!('serviceWorker' in navigator) || !('BroadcastChannel' in window)) throw new Error('no-sw');
+  await navigator.serviceWorker.register('/sw.js');
+  await navigator.serviceWorker.ready;
+  if (!navigator.serviceWorker.controller) {
+    await new Promise((resolve) => {
+      navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
+      setTimeout(resolve, 3000);
+    });
+  }
+  const channel = new BroadcastChannel('nest-deck-demo');
+  channel.onmessage = ({ data }) => {
+    if (data.type === 'action') {
+      if (data.action.type === 'page') return;
+      apply(data.action); renderMac();
+      addEntry({ kind: 'action', label: data.label, action: data.action, from: data.from });
+    } else if (data.type === 'cast') {
+      hubFrame.src = '/?hub=1&t=' + Date.now();
+      addEntry({ kind: 'cast' });
+    } else if (data.type === 'saved') {
+      addEntry({ kind: 'saved' });
+    }
+  };
+  loadFrames();
+}
+
+$('reset').onclick = async () => {
+  try { await fetch('/__demo/reset', { method: 'POST' }); } catch {}
+  Object.assign(mac, { volume: 50, muted: false, playing: false, app: 'Finder', key: '—' });
+  entries.length = 0;
+  applyLang();
+  hubFrame.src = '/?hub=1&t=' + Date.now();
+  $('edFrame').src = '/editor?t=' + Date.now();
+};
+
+applyLang();
+start().catch(() => { $('nosw').style.display = 'block'; });
+</script>
+</body>
+</html>

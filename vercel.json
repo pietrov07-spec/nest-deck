@@ -1,0 +1,11 @@
+{
+  "buildCommand": "node demo/build.mjs",
+  "outputDirectory": "demo-dist",
+  "installCommand": "echo 'La demo no necesita dependencias'",
+  "framework": null,
+  "rewrites": [{ "source": "/editor", "destination": "/editor.html" }],
+  "headers": [
+    { "source": "/sw.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+    { "source": "/(hub.html|editor.html|deck.example.json)", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+  ]
+}
