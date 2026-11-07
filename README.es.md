@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://doi.org/10.5281/zenodo.24026336"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.24026336.svg"></a>
   <img alt="macOS" src="https://img.shields.io/badge/macOS-probado%20en%2026-000?logo=apple&logoColor=white">
   <img alt="Node.js" src="https://img.shields.io/badge/Node.js-18%2B-339933?logo=nodedotjs&logoColor=white">
   <img alt="Google Nest Hub" src="https://img.shields.io/badge/Google-Nest%20Hub-4285F4?logo=google&logoColor=white">
@@ -214,6 +215,13 @@ Los botones no responden hasta que despierte. Conviene mantenerla despierta mien
 - [ ] Receptor de Cast propio (sin la pantalla de DashCast)
 
 Ideas, reportes y pull requests son bienvenidos. Si Nest Deck le dio una segunda vida a tu Hub, **deja una ⭐**: ayuda a que otros lo encuentren.
+
+## 📚 Citar este proyecto
+
+Si lo usas en un trabajo académico, usa el botón **Cite this repository** de
+GitHub (lee [CITATION.cff](CITATION.cff)) o cita el DOI, que siempre apunta a la versión más reciente:
+
+> Vazquez, F. (2026). *Nest Deck: convierte tu Google Nest Hub en un Stream Deck para Mac* (Versión 1.0.0) [Software]. Zenodo. https://doi.org/10.5281/zenodo.24026336
 
 ## 🙏 Créditos
 

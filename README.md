@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://doi.org/10.5281/zenodo.24026336"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.24026336.svg"></a>
   <img alt="macOS" src="https://img.shields.io/badge/macOS-tested%20on%2026-000?logo=apple&logoColor=white">
   <img alt="Node.js" src="https://img.shields.io/badge/Node.js-18%2B-339933?logo=nodedotjs&logoColor=white">
   <img alt="Google Nest Hub" src="https://img.shields.io/badge/Google-Nest%20Hub-4285F4?logo=google&logoColor=white">
@@ -218,6 +219,13 @@ The UI is in Spanish 🇪🇸 — translations are very welcome!
 - [ ] Custom Cast receiver (no DashCast splash)
 
 Ideas, issues and pull requests are welcome. If Nest Deck gave your Hub a second life, **leave a ⭐** — it helps others find it.
+
+## 📚 Cite this project
+
+If you use it in academic work, use the **Cite this repository** button on GitHub
+(it reads [CITATION.cff](CITATION.cff)) or cite the DOI, which always points to the latest version:
+
+> Vazquez, F. (2026). *Nest Deck: Turn your Google Nest Hub into a Stream Deck for Mac* (Version 1.0.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.24026336
 
 ## 🙏 Credits
 

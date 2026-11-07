@@ -7,6 +7,14 @@ authors:
   - family-names: "Vazquez"
     given-names: "Francisco"
     orcid: "https://orcid.org/0000-0003-1686-2599"
+doi: "10.5281/zenodo.24026336"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.24026336"
+    description: "Todas las versiones (siempre la más reciente) · All versions (always the latest)"
+  - type: doi
+    value: "10.5281/zenodo.24026337"
+    description: "Versión 1.0.0 · Version 1.0.0"
 repository-code: "https://github.com/pietrov07-spec/nest-deck"
 license: MIT
 version: "1.0.0"
