@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "Si usas este software en un trabajo académico, cítalo así. · If you use this software in academic work, please cite it as below."
+title: "Nest Deck: convierte tu Google Nest Hub en un Stream Deck para Mac / Turn your Google Nest Hub into a Stream Deck for Mac"
+abstract: "Nest Deck reutiliza un Google Nest Hub como botonera táctil para macOS: un servidor local en Node.js envía una página web al Hub por Google Cast (DashCast) y ejecuta en la Mac las acciones de cada botón (apps, sitios, atajos de teclado, Spotify y Apple Music, volumen, comandos de shell). Incluye editor visual con páginas, recortador de imágenes, creador de iconos y degradados. Funciona 100 % en local, sin cuenta ni nube. Nest Deck repurposes a Google Nest Hub as a touch control panel for macOS: a local Node.js server sends a web page to the Hub over Google Cast (DashCast) and runs each button's action on the Mac (apps, websites, keyboard shortcuts, Spotify and Apple Music, volume, shell commands). It includes a visual editor with pages, an image cropper, an icon creator and gradients. It runs 100% locally, with no account and no cloud."
+type: software
+authors:
+  - family-names: "Vazquez"
+    given-names: "Francisco"
+    orcid: "https://orcid.org/0000-0003-1686-2599"
+repository-code: "https://github.com/pietrov07-spec/nest-deck"
+license: MIT
+version: "1.0.0"
+date-released: "2026-11-06"
+keywords:
+  - stream deck
+  - google nest hub
+  - google cast
+  - chromecast
+  - macos
+  - macro pad
+  - touchscreen
+  - node.js
+  - reutilización de hardware
+  - hardware reuse
+  - open source

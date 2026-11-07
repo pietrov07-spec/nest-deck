@@ -1,0 +1,34 @@
+{
+  "upload_type": "software",
+  "title": "Nest Deck: convierte tu Google Nest Hub en un Stream Deck para Mac / Turn your Google Nest Hub into a Stream Deck for Mac",
+  "creators": [
+    {
+      "name": "Vazquez, Francisco",
+      "orcid": "0000-0003-1686-2599"
+    }
+  ],
+  "description": "<p><strong>ES —</strong> Nest Deck reutiliza un Google Nest Hub como botonera táctil para macOS. Un servidor local en Node.js envía una página web al Hub mediante Google Cast (DashCast) y ejecuta en la Mac la acción de cada botón: abrir apps o sitios, atajos de teclado, control de Spotify y Apple Music, volumen y comandos de shell. Incluye un editor visual con varias páginas, recortador de imágenes, creador de iconos y editor de degradados. Funciona por completo en local, sin cuenta ni nube: el Hub solo recibe etiquetas, colores e imágenes, nunca los comandos.</p><p><strong>EN —</strong> Nest Deck repurposes a Google Nest Hub as a touch control panel for macOS. A local Node.js server sends a web page to the Hub over Google Cast (DashCast) and runs each button's action on the Mac: opening apps or websites, keyboard shortcuts, Spotify and Apple Music controls, volume and shell commands. It includes a visual editor with multiple pages, an image cropper, an icon creator and a gradient editor. It runs entirely locally, with no account and no cloud: the Hub only receives labels, colors and images, never the commands.</p><p>No afiliado a Google ni a Elgato. · Not affiliated with Google or Elgato.</p>",
+  "license": "MIT",
+  "access_right": "open",
+  "language": "spa",
+  "keywords": [
+    "stream deck",
+    "google nest hub",
+    "google cast",
+    "chromecast",
+    "macos",
+    "macro pad",
+    "touchscreen",
+    "node.js",
+    "reutilización de hardware",
+    "hardware reuse",
+    "open source"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/pietrov07-spec/nest-deck",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ]
+}
